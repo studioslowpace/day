@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客舍時間表</title>
+    <style>
+        :root {
+            --bg-color: #f7f5f2;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #999999;
+            --primary-green: #4CAF50;
+            --danger-red: #d9534f;
+            --primary-blue: #2b579a;
+            --border-color: #efefef;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif; 
+            background: var(--bg-color); padding: 10px; margin: 0; transition: background 0.3s ease;
+        }
+        body.admin-mode { background: #f0f4f8; }
+
+        .container { 
+            max-width: 1100px; margin: auto; background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); 
+        }
+        
+        /* 頁首排版 */
+        .header-section { 
+            display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; gap: 20px;
+        }
+        
+        .sort-btn {
+            display: none; font-size: 12px; color: #888; cursor: pointer; padding: 0 2px; transition: color 0.2s;
+        }
+        .sort-btn:hover { color: var(--primary-blue); }
+        body.admin-mode .sort-btn { display: inline-block; }
+        
+        .type-name-text { cursor: default; }
+        body.admin-mode .type-name-text { cursor: pointer; }
+        body.admin-mode .type-name-text:hover { text-decoration: underline; }
+
+        /* 標題與圖示區塊 */
+        .title-area { 
+            display: flex; align-items: center; gap: 15px; justify-content: flex-end; flex-shrink: 0; 
+        }
+        .title-text-group { text-align: right; }
+        .title-area h1 { margin: 0 0 8px 0; font-size: 48px; color: var(--primary-blue); letter-spacing: 2px; font-weight: bold; }
+        
+        .logo-btn {
+            height: 60px; width: auto; object-fit: contain; cursor: pointer; transition: all 0.3s ease; user-select: none; border: 2px solid transparent; border-radius: 4px;
+        }
+        .logo-btn:hover { transform: scale(1.05); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        body.admin-mode .logo-btn { border-color: #ffa000; box-shadow: 0 0 12px rgba(255, 160, 0, 0.4); }
+        
+        #month-display { 
+            font-size: 30px; font-weight: bold; color: var(--primary-blue); display: inline-block; margin-bottom: 12px; cursor: pointer; padding: 6px 12px; border-radius: 4px; transition: all 0.2s ease; user-select: none; 
+        }
+        #month-display:hover { background-color: rgba(0, 0, 0, 0.05); color: #333; }
+        
+        /* 年份大細設定 */
+        .year-big { font-size: 20px; font-weight: bold; margin-right: 6px; color: #4a4a4a; }
+
+        .legend-box { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 0 0; }
+        
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--text-main); padding: 6px 10px; border-radius: 4px; transition: all 0.2s; }
+        body.admin-mode .legend-item { background: rgba(0, 0, 0, 0.02); box-shadow: inset 0 0 0 1px #e0e0e0; }
+
+        .box { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+
+        /* 日曆網格 */
+        .grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--border-color); border-left: 1px solid var(--border-color); margin-bottom: 10px; }
+        .cell { min-height: 160px; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 8px; box-sizing: border-box; background: #fff; cursor: pointer; transition: background 0.2s; }
+        .cell:not(.empty-cell):hover { background: #fafafa; }
+        body.admin-mode .cell:not(.empty-cell):hover { background: #fffdf0; box-shadow: inset 0 0 0 1px #ffa000; }
+        
+        .weekday { text-align: center; font-size: 18px; font-weight: bold; padding: 12px 0; background: #fff; color: #333; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
+        .day-num { text-align: right; font-size: 18px; font-weight: bold; margin-bottom: 8px; color: #333; }
+        .grid .cell:nth-child(7n+1) .day-num, .holiday-cell .day-num { color: var(--danger-red); }
+        .grid .cell:nth-child(7n) .day-num { color: var(--primary-blue); }
+        
+        /* 電腦版正常活動樣式 */
+        .event { font-size: 13px; padding: 5px 8px; margin: 5px 0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); color: #333; line-break: anywhere; }
+        .evt-time { font-weight: bold; display: block; margin-bottom: 2px; }
+        .evt-text { display: inline; }
+        
+        /* 管理中控台 */
+        #admin-panel { max-height: 0; overflow: hidden; background: #fffdf0; border-radius: 12px; padding: 0 20px; transition: all 0.4s ease; margin-top: 0; }
+        body.admin-mode #admin-panel { max-height: 1000px; margin-top: 25px; padding: 20px; border: 2px dashed #ffa000; }
+        #admin-panel h3 { margin-top: 0; color: #ffa000; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 18px; }
+
+        .row { margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        input, select, button { padding: 10px 14px; border-radius: 4px; border: 1px solid #ccc; font-size: 15px; box-sizing: border-box; }
+        button { cursor: pointer; background: var(--primary-blue); color: white; border: none; }
+        button:hover { background: #1e3f70; }
+
+        /* 彈窗樣式 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 1000;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-card { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); box-sizing: border-box; }
+        .modal-card h3 { margin-top: 0; color: #333; font-size: 20px; }
+        .modal-card p { font-size: 16px; }
+        .modal-card buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        
+        #loading-overlay { background: rgba(255,255,255,0.9); font-weight: bold; color: #666; font-size: 18px; }
+
+        .month-select-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-height: 250px; overflow-y: auto; margin-top: 15px; padding-right: 4px;
+        }
+        .month-select-btn {
+            background: #f7f5f2; color: #333; border: 1px solid #eee; padding: 12px; text-align: center; border-radius: 6px; font-size: 15px; transition: all 0.2s; cursor: pointer;
+        }
+        .month-select-btn:hover { background: #eef5ee; border-color: var(--primary-green); }
+        .month-select-btn.active { background: var(--primary-green); color: white; border-color: var(--primary-green); font-weight: bold; }
+
+        /* 📱 手機版專屬 RWD 覆蓋樣式 */
+        @media (max-width: 600px) {
+            .header-section { 
+                flex-direction: column; align-items: center; text-align: center; margin-bottom: 15px; gap: 10px;
+            }
+            .title-area { 
+                flex-direction: row !important; 
+                justify-content: center; 
+                align-items: center; 
+                gap: 12px; 
+                width: 100%;
+            }
+            .title-text-group { text-align: left; }
+            .title-area h1 { font-size: 10px !important; letter-spacing: 0px; margin: 0 0 2px 0; display: block; }
+
+            .year-big { font-size: 14px; display: inline-block; white-space: nowrap; }
+            #month-display { font-size: 12px; margin-bottom: 0; display: inline-block; white-space: nowrap; }
+            .logo-btn { height: 35px; width: auto; }
+
+            .legend-box { justify-content: center; width: 100%; margin-top: 5px; gap: 8px; }
+            .legend-item { font-size: 10px; padding: 4px 6px; }
+            .box { width: 14px; height: 14px; }
+
+            /* 🛠️ 手機版格子：固定正方形外觀、不再因活動字數拉長 */
+            .cell { 
+                min-height: 55px; 
+                height: 55px !important; 
+                padding: 2px; 
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                align-items: center;
+                overflow: hidden;
+            }
+            .day-num { font-size: 11px; margin-bottom: 0; text-align: right; width: 100%; padding-right: 2px; box-sizing: border-box; }
+            .weekday { font-size: 13px; padding: 6px 0; }
+
+            /* 🛠️ 關鍵核心：手機版隱藏活動內容，僅作為有顏色的底色方塊，或者將時間直接水平呈現 */
+            .event { 
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                margin: 0; padding: 0;
+                border-radius: 0;
+                box-shadow: none;
+                z-index: 1;
+                display: flex;
+                align-items: flex-end;    /* 時間推到最底下 */
+                justify-content: center;
+            }
+            
+            /* 讓日期數字浮在顏色之上 */
+            .day-num { position: relative; z-index: 2; }
+
+            /* 🛠️ 核心：手機版只顯示簡寫時間（支援 pre-line 換行、橫向置中） */
+            .evt-time { 
+                display: block !important;
+                font-size: 9px;
+                font-weight: normal;
+                color: #222;
+                background: rgba(255, 255, 255, 0.4); /* 微透明背景確保時間數字清晰可讀 */
+                width: 100%;
+                text-align: center;
+                white-space: pre-line; /* 👈 關鍵：這行能讓 \n 變成真正的換行 */
+                padding: 1px 0;
+                letter-spacing: -0.3px;
+                transform: scale(0.9);
+            }
+            .evt-text { 
+                display: none !important; /* 👈 完全隱藏活動詳細文字 */
+            } 
+
+            .row { flex-direction: column; align-items: stretch; gap: 8px; }
+            .row input, .row select, .row button { width: 100% !important; }
+            #admin-panel h3 { flex-direction: column; align-items: center; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+
+<div class="container">
+    <div class="header-section">
+        <div id="legend-list" class="legend-box"></div>
+        <div class="title-area">
+            <img class="logo-btn" id="logo-trigger" onclick="toggleAdmin()" src="https://static.wixstatic.com/media/fc4bd9_7b52415be7aa42219d5b7a68fc82e136~mv2.png" alt="客舍Logo">
+            <div class="title-text-group">
+                <h1>每月時間表</h1>
+                <span id="month-display" onclick="openModal('switchMonthModal')">連線中...</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="calendar" class="grid"></div>
+
+    <div id="admin-panel">
+        <h3>
+            <span>🛠 管理員智慧中控台</span>
+            <button onclick="openModal('passwordModal')" style="background:#673ab7; font-size:13px; padding:4px 8px;">🔑 修改管理員密碼</button>
+        </h3>
+        <div class="row">
+            <input type="number" id="e-day" placeholder="日">
+            <input type="text" id="e-time" placeholder="時間 (如 19:30)">
+            <input type="text" id="e-text" placeholder="活動內容">
+            <select id="e-type"></select>
+            <button onclick="addEvent()" id="btn-save-event">新增活動</button>
+            <button onclick="clearEventForm()" style="background:#888">清空</button>
+        </div>
+        <div class="row" style="border-top: 1px dashed #ddd; padding-top: 15px; margin-bottom: 0;">
+            <input type="text" id="new-type" placeholder="新類型名稱">
+            <input type="color" id="new-color" value="#dcecfc" style="padding:0; height:35px; cursor:pointer;">
+            <button onclick="addType()">快速新增類型</button>
+            <div style="margin-left: auto; display: flex; gap: 10px; width: 100%;">
+                <button onclick="openModal('monthModal')" style="flex:1;">新增月份</button>
+                <button style="background:var(--danger-red); flex:1;" onclick="openModal('delMonthModal')">刪除本月</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="switchMonthModal">
+    <div class="modal-card">
+        <h3>請選擇月份</h3>
+        <div id="popup-month-list" class="month-select-grid"></div>
+        <div class="modal-buttons">
+            <button onclick="closeModal('switchMonthModal')" style="background:#888; width: 100%;">關閉</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="typeManageModal">
+    <div class="modal-card">
+        <h3>修改 / 刪除 活動類型</h3>
+        <p style="font-size: 14px; color: #666;">您正在管理類型：<b id="manage-type-target"></b></p>
+        <div style="margin-bottom: 12px;">
+            <label style="font-size:14px; display:block; margin-bottom:4px;">類型名稱：</label>
+            <input type="text" id="manage-type-name" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label style="font-size:14px; display:block; margin-bottom:4px;">代表顏色：</label>
+            <input type="color" id="manage-type-color" style="padding:0; width:100%; height:40px; cursor:pointer;">
+        </div>
+        <div class="modal-buttons" style="justify-content: space-between;">
+            <button onclick="submitDeleteType()" style="background:var(--danger-red)">🗑 刪除此類型</button>
+            <div>
+                <button onclick="closeModal('typeManageModal')" style="background:#888">取消</button>
+                <button onclick="submitUpdateType()" style="background:var(--primary-green)">💾 儲存修改</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="authModal">
+    <div class="modal-card">
+        <h3>安全驗證</h3>
+        <p>請輸入管理員密碼：</p>
+        <input type="password" id="admin-pwd" style="width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 10px;">
+        <div class="modal-buttons">
+            <button onclick="closeModal('authModal')" style="background:#888">取消</button>
+            <button onclick="verifyAdmin()">確認登入</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal-card">
+        <h3>修改管理員密碼</h3>
+        <p>請輸入全新密碼：</p>
+        <input type="text" id="new-pwd-input" style="width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 10px;" placeholder="請輸入新密碼">
+        <div class="modal-buttons">
+            <button onclick="closeModal('passwordModal')" style="background:#888">取消</button>
+            <button onclick="submitChangePassword()" style="background:#673ab7;">確認修改</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="monthModal">
+    <div class="modal-card">
+        <h3>新增月份</h3>
+        <p>請選擇欲建立的月份：</p>
+        <input type="month" id="new-month-input" value="2026-02" style="width: 100%; box-sizing: border-box; padding: 10px;">
+        <div class="modal-buttons">
+            <button onclick="closeModal('monthModal')" style="background:#888">取消</button>
+            <button onclick="submitAddMonth()">建立</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="delMonthModal">
+    <div class="modal-card">
+        <h3 style="color:var(--danger-red)">警告</h3>
+        <p>確定要刪除整個 <b><span class="text-current-month"></span></b> 月份的所有活動嗎？</p>
+        <div class="modal-buttons">
+            <button onclick="closeModal('delMonthModal')" style="background:#888">取消</button>
+            <button onclick="submitDelMonth()" style="background:var(--danger-red)">確定刪除</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="eventActionModal">
+    <div class="modal-card">
+        <h3 id="modal-action-title">活動詳細資訊</h3>
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; font-size: 16px; margin-bottom: 15px; border-left: 4px solid var(--primary-blue);" id="info-event-preview"></div>
+        <div class="modal-buttons" id="modal-action-buttons">
+            </div>
+    </div>
+</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzKqJC6VKWUU397y4R6CzQl4BU8L3J4x2q7ySuFzzgDyEULP9TGoGQFXYl9DWfHiLAz/exec";    
+const today = new Date();
+const currentYearStr = today.getFullYear();
+const currentMonthStr = (today.getMonth() + 1).toString().padStart(2, '0');
+// 🛠️ 統一使用這個宣告好的變數
+let currentMonth = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+
+let isAdmin = false;
+let editingEventId = null;
+let targetedEventIndex = null;
+let targetedTypeName = null; 
+
+let types = [];
+let months = [];
+let events = {};
+let correctPassword = ""; 
+
+const holidays = [
+    "2026-01-01", "2026-02-17", "2026-02-18", "2026-02-19", "2026-04-03", 
+    "2026-04-04", "2026-04-06", "2026-04-07", "2026-05-01", "2026-05-25",     
+    "2026-06-19", "2026-07-01", "2026-09-26", "2026-10-01", "2026-10-19",
+    "2026-12-25", "2026-12-26"
+];
+
+// 1. 初始化讀取 (修正 fetch 引號與變數對接)
+async function initApp() {
+    try {
+        const res = await fetch(GAS_URL);
+        const data = await res.json();
+        correctPassword = data.password || "";
+        types = data.types || [];
+        months = data.months || [];
+        events = data.events || {};
+        render();
+    } catch (e) {
+        console.error("資料載入失敗:", e);
+        document.getElementById('month-display').innerText = "連線失敗";
+    }
+}
+
+// 2. 統一同步函數 (修正 payload 結構)
+async function syncAndSave() {
+    document.getElementById('loading-overlay').classList.add('active');
+    try {
+        await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: 'saveAll', types, months, events, password: correctPassword })
+        });
+        render();
+    } catch (e) { alert("同步失敗，請檢查網路"); }
+    document.getElementById('loading-overlay').classList.remove('active');
+}
+
+window.onmessage = (event) => {
+    if (event.data) {
+        const data = event.data;
+        if (data.type === "INIT_DATA") {
+            types = data.types.length ? data.types : [{name:'讀書會', color:'#dcecfc'}];
+            months = data.months;
+            events = data.events;
+            correctPassword = data.password;
+            
+            // 🛠️ 已修正：將原本的 sysCurrentMonth 全部替換為你最上方宣告的 currentMonth
+            if(!months.includes(currentMonth)) { 
+                currentMonth = months.includes(currentMonth) 
+                    ? currentMonth 
+                    : (months[0] || currentMonth); 
+            }
+            document.getElementById('loading-overlay').classList.remove('active');
+            render();
+        } 
+        else if (data.type === "PASSWORD_CHANGED_SUCCESS") {
+            correctPassword = data.newPassword;
+            alert("🔒 密碼已成功修改並儲存至 Wix 資料庫！");
+        }
+    }
+};
+
+
+function openModal(id) {
+    document.querySelectorAll('.text-current-month').forEach(el => el.innerText = currentMonth);
+    document.getElementById(id).classList.add('active');
+    if(id === 'authModal') document.getElementById('admin-pwd').focus();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function toggleAdmin() {
+    if(!isAdmin) { openModal('authModal'); } 
+    else {
+        isAdmin = false;
+        document.body.classList.remove('admin-mode');
+        clearEventForm();
+        render();
+    }
+}
+
+function verifyAdmin() {
+    let pwd = document.getElementById('admin-pwd').value;
+    if(pwd === correctPassword) {
+        isAdmin = true;
+        document.body.classList.add('admin-mode');
+        closeModal('authModal');
+        document.getElementById('admin-pwd').value = '';
+        render();
+    } else { alert("密碼錯誤！"); }
+}
+
+function submitChangePassword() {
+    let newPwd = document.getElementById('new-pwd-input').value.trim();
+    if(!newPwd) return alert("密碼不能為空！");
+    window.parent.postMessage({ type: "CHANGE_PASSWORD", newPassword: newPwd }, "*");
+    closeModal('passwordModal');
+    document.getElementById('new-pwd-input').value = '';
+}
+
+function convertToChineseMonth(monthStr) {
+    const [year, month] = monthStr.split('-');
+    const chineseMonths = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"];
+    const chineseYear = year.split('').map(d => ["零","一","二","三","四","五","六","七","八","九"][d]).join('');
+    return `<span class="year-big">${chineseYear}年</span>${chineseMonths[parseInt(month)-1]}月`;
+}
+
+
+function render() {
+    document.getElementById('popup-month-list').innerHTML = months.map(m => {
+        let activeClass = m === currentMonth ? 'active' : '';
+        return `<div class="month-select-btn ${activeClass}" onclick="selectMonthFromPopup('${m}')">${convertToChineseMonth(m)}</div>`;
+    }).join('');
+    
+    const [year, month] = currentMonth.split('-');
+    document.getElementById('month-display').innerHTML = convertToChineseMonth(currentMonth);
+    
+    const leg = document.getElementById('legend-list');
+    leg.innerHTML = types.map((t, idx) => `
+        <div class="legend-item">
+            <div class="box" style="background:${t.color}"></div>
+            <span class="type-name-text" onclick="triggerTypeAction('${t.name}')">${t.name}</span>
+            <span class="sort-btn" onclick="moveType(${idx}, 'left', event)">◀</span>
+            <span class="sort-btn" onclick="moveType(${idx}, 'right', event)">▶</span>
+        </div>`).join('');
+
+    document.getElementById('e-type').innerHTML = types.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+
+    const cal = document.getElementById('calendar');
+    cal.innerHTML = '';
+    ['日','一','二','三','四','五','六'].forEach(h => cal.innerHTML += `<div class="weekday">${h}</div>`);
+    
+    const firstDayIndex = new Date(parseInt(year), parseInt(month) - 1, 1).getDay();
+    const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const monthEvents = events[currentMonth] || [];
+
+    for (let i = 0; i < firstDayIndex; i++) {
+        cal.innerHTML += `<div class="cell empty-cell" style="background:#fafafa; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></div>`;
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        let dateStr = `${currentMonth}-${d.toString().padStart(2, '0')}`;
+        let isHoliday = holidays.includes(dateStr);
+
+        let cell = document.createElement('div');
+        cell.className = 'cell' + (isHoliday ? ' holiday-cell' : '');
+        
+        cell.onclick = (e) => { 
+            let dayEvts = monthEvents.filter(evt => evt.day == d);
+            if(dayEvts.length > 0) {
+                let idx = monthEvents.findIndex(evt => evt.day == d);
+                triggerEventAction(idx, e);
+            } else if(isAdmin) {
+                document.getElementById('e-day').value = d;
+            }
+        };
+        
+        let cellHTML = `<div class="day-num">${d}</div>`;
+        monthEvents.forEach((e, index) => {
+            if(e.day == d) {
+                let tCfg = types.find(t => t.name == e.type) || {color: '#eee'};
+                
+                // 🛠️ 處理手機版時間分行：如果是手機版，就把連字號、波浪號、中文「至」或空格替換成換行符號 \n
+                let displayTime = e.time || '';
+                if (window.innerWidth <= 600 && displayTime) {
+                    displayTime = displayTime.replace(/\s*([-~至])\s*/g, '\n$1\n').replace(' ', '\n');
+                }
+
+                cellHTML += `<div class="event" style="background:${tCfg.color}" onclick="triggerEventAction(${index}, event)">
+                    <span class="evt-time">${displayTime}</span>
+                    <span class="evt-text">${e.text}</span>
+                </div>`;
+            }
+        });
+        
+        cell.innerHTML = cellHTML;
+        cal.appendChild(cell);
+    }
+}
+
+function selectMonthFromPopup(m) {
+    currentMonth = m;
+    clearEventForm();
+    closeModal('switchMonthModal');
+    render();
+}
+
+function triggerTypeAction(name) {
+    if(!isAdmin) return; 
+    targetedTypeName = name;
+    let targetType = types.find(t => t.name === name);
+    
+    document.getElementById('manage-type-target').innerText = name;
+    document.getElementById('manage-type-name').value = targetType.name;
+    document.getElementById('manage-type-color').value = targetType.color;
+    
+    openModal('typeManageModal');
+}
+
+function submitUpdateType() {
+    let newName = document.getElementById('manage-type-name').value.trim();
+    let newColor = document.getElementById('manage-type-color').value;
+    
+    if(!newName) return alert("名稱不能為空！");
+    if(newName !== targetedTypeName && types.some(t => t.name === newName)) { return alert("此類型名稱已存在！"); }
+
+    types = types.map(t => {
+        if(t.name === targetedTypeName) { return { name: newName, color: newColor }; }
+        return t;
+    });
+
+    if(newName !== targetedTypeName) {
+        Object.keys(events).forEach(m => {
+            events[m] = events[m].map(evt => {
+                if(evt.type === targetedTypeName) { evt.type = newName; }
+                return evt;
+            });
+        });
+    }
+
+   
+}
+
+function submitDeleteType() {
+    if(confirm(`確定刪除「${targetedTypeName}」活動類型？\n（注意：已建立此類期的活動底色會變回預設灰）`)) {
+        types = types.filter(t => t.name !== targetedTypeName);
+        closeModal('typeManageModal');
+        render();
+    }
+}
+
+function triggerEventAction(index, event) {
+    event.stopPropagation();
+    targetedEventIndex = index;
+    let evt = events[currentMonth][index];
+    
+    document.getElementById('info-event-preview').innerHTML = `
+        <b>活動名稱：</b> ${evt.text}<br>
+        <b>活動時間：</b> ${evt.time || '全天'}<br>
+        <b>活動類型：</b> ${evt.type}
+    `;
+    
+    const btnContainer = document.getElementById('modal-action-buttons');
+    if(isAdmin) {
+        document.getElementById('modal-action-title').innerText = "🛠️ 管理此項活動";
+        btnContainer.innerHTML = `
+            <button onclick="submitDeleteEvent()" style="background:var(--danger-red)">🗑 刪除活動</button>
+            <div>
+                <button onclick="closeModal('eventActionModal')" style="background:#888">關閉</button>
+                <button onclick="loadEventToForm()">✏️ 修改</button>
+            </div>
+        `;
+    } else {
+        document.getElementById('modal-action-title').innerText = "✨ 活動詳細資訊";
+        btnContainer.innerHTML = `
+            <button onclick="closeModal('eventActionModal')" style="background:var(--primary-blue); width:100%;">我知道了</button>
+        `;
+    }
+    openModal('eventActionModal');
+}
+
+function loadEventToForm() {
+    let evt = events[currentMonth][targetedEventIndex];
+    document.getElementById('e-day').value = evt.day;
+    document.getElementById('e-time').value = evt.time;
+    document.getElementById('e-text').value = evt.text;
+    document.getElementById('e-type').value = evt.type;
+    editingEventId = targetedEventIndex;
+    document.getElementById('btn-save-event').innerText = "儲存修改";
+    closeModal('eventActionModal');
+    
+    document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function clearEventForm() {
+    document.getElementById('e-day').value = '';
+    document.getElementById('e-time').value = '';
+    document.getElementById('e-text').value = '';
+    editingEventId = null;
+    document.getElementById('btn-save-event').innerText = "新增活動";
+}
+
+function addEvent() {
+    let day = document.getElementById('e-day').value;
+    let time = document.getElementById('e-time').value;
+    let text = document.getElementById('e-text').value.trim();
+    let type = document.getElementById('e-type').value;
+
+    if(!day) return alert("請填寫日期");
+    if(!events[currentMonth]) events[currentMonth] = [];
+    
+    let eventData = { day: parseInt(day), time, text, type };
+    if(editingEventId !== null) events[currentMonth][editingEventId] = eventData;
+    else events[currentMonth].push(eventData);
+    
+    clearEventForm();
+    syncAndSave();
+}
+
+// 執行初始化
+initApp();
+
+function submitDeleteEvent() {
+    if(targetedEventIndex !== null) {
+        events[currentMonth].splice(targetedEventIndex, 1);
+        closeModal('eventActionModal');
+        clearEventForm();
+        render();
+    }
+}
+
+function addType() {
+    let name = document.getElementById('new-type').value.trim();
+    let color = document.getElementById('new-color').value;
+    if(!name) return alert("請輸入名稱");
+    if(types.some(t => t.name === name)) return alert("此類型已存在");
+    types.push({name, color});
+    document.getElementById('new-type').value = '';
+    render();
+}
+
+function submitAddMonth() {
+    let m = document.getElementById('new-month-input').value;
+    if(m && !months.includes(m)) {
+        months.push(m); months.sort();
+        currentMonth = m;
+        closeModal('monthModal');
+        render();
+    }
+}
+
+function submitDelMonth() {
+    months = months.filter(m => m !== currentMonth);
+    delete events[currentMonth];
+    currentMonth = months[0] || "2026-01";
+    closeModal('delMonthModal');
+    render();
+}
+
+</script>
+</body>
+</html>
