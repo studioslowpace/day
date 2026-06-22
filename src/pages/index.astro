@@ -49,33 +49,19 @@ if (response.ok) {
         // 處理內文字串換行
         const formattedContent = item.content ? item.content.replace(/\n/g, '<br>') : '';
         return (
-          <section class="card" data-index={index}>
-            <div class="edit-badge" data-edit-index={index}>編輯 ✎</div>
-            <h2>{item.title || '未命名'}</h2>
-            <hr />
-            <img class="card-img" src={item.image_url || ''} alt={item.title} oncontextmenu="return false;" ondragstart="return false;" />
-            <div class="content-text" set:html={formattedContent}></div>
-          </section>
+          /* 🌟 改動點：把整個 card 變成真正的超連結，導向獨立的 Astro 分頁路徑 */
+          <a href={`/day/clubs/${item.id}/`} class="card-link" style="text-decoration: none; color: inherit;">
+            <section class="card" data-index={index}>
+              {/* 🌟 編輯按鈕加上 stopPropagation 避免觸發點擊跳轉 */}
+              <div class="edit-badge" data-edit-index={index} onclick="event.preventDefault(); event.stopPropagation();">編輯 ✎</div>
+              <h2>{item.title || '未命名'}</h2>
+              <hr />
+              <img class="card-img" src={item.image_url || ''} alt={item.title} oncontextmenu="return false;" ondragstart="return false;" />
+              <div class="content-text" set:html={formattedContent}></div>
+            </section>
+          </a>
         );
       })}
-    </div>
-
-    <div class="detail-view-container" id="detailViewArea">
-      <div class="detail-nav-bar">
-        <button class="view-close-btn" id="closeDetailBtn">← 返回列表</button>
-        <div class="page-switch-group">
-          <button class="nav-btn" id="prevClubBtn">上一篇</button>
-          <button class="nav-btn" id="nextClubBtn">下一篇</button>
-        </div>
-      </div>
-
-      <h2 class="detail-centered-title" id="detailTitleSlot"></h2>
-      <hr class="detail-centered-hr">
-
-      <div class="detail-layout">
-        <div class="detail-left-col" id="detailLeftImgArea"></div>
-        <div class="detail-right-col" id="detailRightTextArea"></div>
-      </div>
     </div>
   </main>
 
@@ -155,31 +141,18 @@ if (response.ok) {
   window.client = supabase.createClient(window.supabaseUrl, window.supabaseKey);
 
   let globalClubsData = []; 
-  let currentActiveIndex = -1; 
-  let touchStartX = 0;
-  let touchEndX = 0;
 
   document.addEventListener("DOMContentLoaded", async () => {
-    // 為了前端詳細頁翻頁與編輯，先從資料庫抓取快取
     const { data } = await window.client.from(window.TABLE_NAME).select('*').order('sort_order', { ascending: false });
     globalClubsData = data || [];
 
     loadExternalHeader();
     loadExternalFooter();
-    setupTouchListeners();
     bindDOMEvents();
     checkLoginState();
   });
 
   function bindDOMEvents() {
-    // 綁定卡片點擊與編輯事件
-    document.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', () => {
-        const index = parseInt(card.getAttribute('data-index'), 10);
-        openDetailPageView(index);
-      });
-    });
-
     document.querySelectorAll('.edit-badge').forEach(badge => {
       badge.addEventListener('click', (e) => {
         const index = parseInt(badge.getAttribute('data-edit-index'), 10);
@@ -187,15 +160,11 @@ if (response.ok) {
       });
     });
 
-    // 基礎 UI 事件綁定
     document.getElementById('adminSecretBtn').onclick = openPasswordModal;
     document.getElementById('closePasswordModalBtn').onclick = closePasswordModal;
     document.getElementById('verifyPasswordBtn').onclick = verifyPassword;
     document.getElementById('openCreateModalBtn').onclick = openCreateModal;
     document.getElementById('closeAdminModalBtn').onclick = closeAdminModal;
-    document.getElementById('closeDetailBtn').onclick = closeDetailPageView;
-    document.getElementById('prevClubBtn').onclick = () => navigateClub(-1);
-    document.getElementById('nextClubBtn').onclick = () => navigateClub(1);
     document.getElementById('closeAlertBtn').onclick = closeCustomAlert;
     document.getElementById('clubForm').onsubmit = handleSubmit;
 
@@ -203,7 +172,6 @@ if (response.ok) {
     document.getElementById('radioSrcUrl').onclick = () => switchImgMethod('url');
   }
 
-  // 彈出通知與自訂視窗控制
   function showAlert(msg) {
     document.getElementById('alertMessage').innerText = msg;
     document.getElementById('customAlert').style.display = 'flex';
@@ -220,12 +188,9 @@ if (response.ok) {
     document.getElementById('adminPwd').value = '';
   }
 
-  // 通行密碼驗證邏輯
   async function verifyPassword() {
     const pwd = document.getElementById('adminPwd').value.trim();
     if (!pwd) return;
-    
-    // 沿用你的專屬管理員帳密映射邏輯
     const formattedEmail = `${pwd}@studio.local`;
     const { error } = await window.client.auth.signInWithPassword({ email: formattedEmail, password: pwd });
     
@@ -250,7 +215,6 @@ if (response.ok) {
     }
   }
 
-  // 外部組件動態讀取
   async function loadExternalHeader() {
     try {
       const resp = await fetch('/header.html');
@@ -264,54 +228,6 @@ if (response.ok) {
     } catch (e) {}
   }
 
-  // 詳細頁切換與瀏覽
-  function openDetailPageView(index) {
-    currentActiveIndex = index;
-    const item = globalClubsData[index];
-    if (!item) return;
-
-    const formattedContent = item.content ? item.content.replace(/\n/g, '<br>') : '';
-    document.getElementById('detailTitleSlot').innerText = item.title || '未命名';
-    document.getElementById('detailLeftImgArea').innerHTML = `<img class="detail-main-img" src="${item.image_url || ''}" alt="${item.title}">`;
-    document.getElementById('detailRightTextArea').innerHTML = `<div class="content-text">${formattedContent}</div>`;
-    
-    document.getElementById('mainHeaderArea').style.display = 'none';
-    document.getElementById('clubs-container').style.display = 'none';
-    if (document.getElementById('clubGlobalAddBlock')) document.getElementById('clubGlobalAddBlock').style.display = 'none';
-    
-    document.getElementById('detailViewArea').style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function closeDetailPageView() {
-    document.getElementById('detailViewArea').style.display = 'none';
-    document.getElementById('mainHeaderArea').style.display = 'block';
-    document.getElementById('clubs-container').style.display = 'grid';
-    checkLoginState(); // 重新整理按鈕狀態
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function navigateClub(direction) {
-    let newIndex = currentActiveIndex + direction;
-    if (newIndex < 0) newIndex = globalClubsData.length - 1;
-    if (newIndex >= globalClubsData.length) newIndex = 0;
-    openDetailPageView(newIndex);
-  }
-
-  // 手勢滑動
-  function setupTouchListeners() {
-    const area = document.getElementById('detailViewArea');
-    if (!area) return;
-    area.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-    area.addEventListener('touchend', (e) => { touchEndX = e.changedTouches[0].screenX; handleSwipeGesture(); }, { passive: true });
-  }
-  function handleSwipeGesture() {
-    const threshold = 60;
-    if (touchStartX - touchEndX > threshold) navigateClub(1);
-    if (touchEndX - touchStartX > threshold) navigateClub(-1);
-  }
-
-  // 管理員表單新增與編輯控制
   function openCreateModal() {
     document.getElementById('modalTitle').innerText = "新增讀書會資料";
     document.getElementById('editingId').value = '';
@@ -342,7 +258,7 @@ if (response.ok) {
     document.getElementById('clubForm').reset();
   }
 
-  function switchImgMethod(method) {
+  fn switchImgMethod(method) {
     if (method === 'upload') {
       document.getElementById('uploadInputSection').style.display = 'block';
       document.getElementById('urlInputSection').style.display = 'none';
@@ -352,7 +268,6 @@ if (response.ok) {
     }
   }
 
-  // 圖片壓縮邏輯
   function compressImage(file, maxWidth = 1200, quality = 0.8) {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -372,7 +287,6 @@ if (response.ok) {
     });
   }
 
-  // 提交儲存表單
   async function handleSubmit(event) {
     event.preventDefault();
     const submitBtn = document.getElementById('submitBtn');
@@ -427,9 +341,6 @@ if (response.ok) {
 </script>
 
 <style>
-  /* =========================================================================
-     4. CSS 樣式區：完美繼承你原本的網頁細緻設計、排版和 RWD 手機版優化
-     ========================================================================= */
   *, *::before, *::after {
     box-sizing: border-box;
   }
@@ -486,6 +397,11 @@ if (response.ok) {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 40px;
   }
+  /* 🌟 卡片外層加上 Link 包裹樣式調整 */
+  .card-link {
+    display: block;
+    transition: all 0.3s ease;
+  }
   .card {
     background: #fff;
     padding: 25px;
@@ -494,10 +410,10 @@ if (response.ok) {
     display: flex;
     flex-direction: column;
     cursor: pointer;
-    transition: all 0.3s ease;
+    height: 100%;
     position: relative;
   }
-  .card:hover {
+  .card-link:hover .card {
     transform: translateY(-5px);
   }
   .card h2 {
@@ -544,73 +460,6 @@ if (response.ok) {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .detail-view-container {
-    display: none;
-    background: white;
-    padding: 40px;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    touch-action: pan-y;
-  }
-  .detail-layout {
-    display: flex;
-    gap: 40px;
-    margin-top: 20px;
-  }
-  .detail-centered-title {
-    font-size: 28px;
-    color: #4a3728;
-    text-align: center;
-    margin-top: 10px;
-    margin-bottom: 5px;
-    font-weight: bold;
-    width: 100%;
-  }
-  .detail-left-col {
-    flex: 0 0 380px;
-  }
-  .detail-main-img {
-    width: 100%;
-    aspect-ratio: 108 / 135;
-    object-fit: cover;
-    border-radius: 6px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
-  .detail-right-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  .detail-right-col .content-text {
-    font-size: 16px;
-    color: #444;
-    text-align: justify;
-    line-height: 1.9;
-  }
-  .detail-nav-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-    width: 100%;
-  }
-  .view-close-btn {
-    background: #4a3728; color: white;
-    border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px;
-    transition: background 0.2s;
-  }
-  .view-close-btn:hover { background: #33251b; }
-  
-  .page-switch-group {
-    display: flex;
-    gap: 10px;
-  }
-  .nav-btn {
-    background: #4a3728; color: white;
-    border: none; font-size: 14px; padding: 0 15px; height: 38px;
-    cursor: pointer; border-radius: 4px; transition: background 0.2s;
-  }
-  .nav-btn:hover { background: #33251b; }
 
   .alert-modal, .admin-modal {
     display: none;
@@ -671,21 +520,8 @@ if (response.ok) {
   }
 
   @media (max-width: 600px) {
-    .detail-layout {
-      flex-direction: column;
-      gap: 20px;
-    }
-    .detail-left-col {
-      flex: none;
-      width: 100%;
-      max-width: 340px;
-      margin: 0 auto;
-    }
     .logo-btn img {
       max-width: 30px;
-    }
-    .detail-view-container {
-      padding: 20px;
     }
   }
 </style>
