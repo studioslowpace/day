@@ -3,6 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ] # 如果你的主分支叫 master，請改成 master
+      # 🌟 補上這段，允許外部工具觸發打包
+  repository_dispatch:
+    types: [supabase_update]
 
 permissions:
   contents: read
