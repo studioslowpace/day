@@ -329,7 +329,26 @@ if (response.ok) {
 
       if (resError) throw resError;
 
-      showAlert("🎉 資料儲存成功！網頁會在重新編譯完成後（大約1分鐘）更新畫面。");
+      // 🌟 核心修改：當 Supabase 儲存成功後，立刻直接由前端發送 API 給 GitHub Actions 觸發打包
+      try {
+        await fetch('https://api.github.com/repos/studioslowpace/day/dispatches', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            // ⚠️ 請務必把下方的 ghp_ 開頭字串換成你自己的 GitHub Token 喔！
+            'Authorization': 'Bearer ghp_你的GitHub長字串Token',
+          },
+          body: JSON.stringify({
+            event_type: 'supabase_update' // 這邊要跟你的 deploy.yml 的 types 對上
+          })
+        });
+        console.log("🚀 GitHub Actions 打包請求已發送！");
+      } catch (githubErr) {
+        // 如果 GitHub 呼叫失敗，我們用 console 紀錄就好，不干擾使用者正常的儲存流程
+        console.error("呼叫 GitHub 失敗，但資料已成功寫入 Supabase：", githubErr);
+      }
+
+      showAlert("🎉 資料儲存成功！網頁已通知 GitHub 開始重新編譯，大約 1~2 分鐘後會更新線上畫面。");
       closeAdminModal();
       setTimeout(() => window.location.reload(), 1500);
 
