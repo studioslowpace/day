@@ -44,25 +44,25 @@ if (response.ok) {
       </button>
     </div>
 
-    <div class="grid-container" id="clubs-container">
-      {clubsData.map((item, index) => {
-        // 處理內文字串換行
-        const formattedContent = item.content ? item.content.replace(/\n/g, '<br>') : '';
-        return (
-          /* 🌟 改動點：把整個 card 變成真正的超連結，導向獨立的 Astro 分頁路徑 */
-          <a href={`/day/clubs/${item.id}/`} class="card-link" style="text-decoration: none; color: inherit;">
-            <section class="card" data-index={index}>
-              {/* 🌟 編輯按鈕加上 stopPropagation 避免觸發點擊跳轉 */}
-              <div class="edit-badge" data-edit-index={index} onclick="event.preventDefault(); event.stopPropagation();">編輯 ✎</div>
-              <h2>{item.title || '未命名'}</h2>
-              <hr />
-              <img class="card-img" src={item.image_url || ''} alt={item.title} oncontextmenu="return false;" ondragstart="return false;" />
-              <div class="content-text" set:html={formattedContent}></div>
-            </section>
-          </a>
-        );
-      })}
-    </div>
+<div class="grid-container" id="clubs-container">
+  {clubsData.map((item, index) => {
+    // 處理內文字串換行
+    const formattedContent = item.content ? item.content.replace(/\n/g, '<br>') : '';
+    return (
+      /* 🌟 修正點：把網址的 ${item.id} 改成 ${encodeURIComponent(item.title)} */
+      <a href={`/day/clubs/${encodeURIComponent(item.title || '未命名')}/`} class="card-link" style="text-decoration: none; color: inherit;">
+        <section class="card" data-index={index}>
+          {/* 🌟 編輯按鈕加上 stopPropagation 避免觸發點擊跳轉 */}
+          <div class="edit-badge" data-edit-index={index} onclick="event.preventDefault(); event.stopPropagation();">編輯 ✎</div>
+          <h2>{item.title || '未命名'}</h2>
+          <hr />
+          <img class="card-img" src={item.image_url || ''} alt={item.title} oncontextmenu="return false;" ondragstart="return false;" />
+          <div class="content-text" set:html={formattedContent}></div>
+        </section>
+      </a>
+    );
+  })}
+</div>
   </main>
 
   <div class="alert-modal" id="customAlert">
