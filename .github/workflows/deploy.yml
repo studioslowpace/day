@@ -2,11 +2,11 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ] # 如果你的主分支叫 master，請改成 master
-      # 🌟 補上這段，允許外部工具觸發打包
-  repository_dispatch:
-    types: [supabase_update]
-
+    branches: [ main ]
+  
+  # 🌟 暴力改法：不指定 types！這樣一來，不論外面的 event_type 叫什麼名字，GitHub 都會強制亮燈打包！
+  repository_dispatch: {}
+  
 permissions:
   contents: read
   pages: write
