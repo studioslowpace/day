@@ -1,0 +1,26 @@
+name: 🚀 外部通知自動打包
+
+on:
+  # 🌟 這是大絕招：完全不設限制，任何只要帶著正確 Token 的通知都能直接啟動它！
+  repository_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 下載專案原始碼
+        uses: actions/checkout@v4
+
+      - name: 🟢 設定 Node.js 環境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # 這裡先用 20 確保你的 Astro 專案相容
+
+      - name: 📦 安裝套件
+        run: npm ci
+
+      - name: 🏗️ 執行 Astro 打包
+        run: npm run build
+
+      - name: 📤 部署到 GitHub Pages
+        uses: actions/deploy-pages@v4
