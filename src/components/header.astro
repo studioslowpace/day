@@ -1,6 +1,46 @@
-<link rel="icon" sizes="192x192" href="/images/logo-small2.png" type="image/x-icon">
-  <link rel="shortcut icon" href="/images/logo-small2.png" type="image/x-icon">
-  <link rel="apple-touch-icon" href="/images/logo-small2.png" type="image/x-icon">
+---
+// src/components/components/Header.astro
+// 這裡可以放伺服器端變數（如需要的話），目前空著即可
+---
+
+<link rel="icon" sizes="192x192" href="/images/logo-small2.png" type="image/x-icon" />
+<link rel="shortcut icon" href="/images/logo-small2.png" type="image/x-icon" />
+<link rel="apple-touch-icon" href="/images/logo-small2.png" type="image/x-icon" />
+
+<header class="header-navbar">
+    <div class="header-navbar-container">
+        <div class="header-logo-area">
+            <a href="/" class="header-logo-link" aria-label="回到首頁">
+                <div class="header-logo-icon">
+                    <img src="/images/logo-word.png" alt="空間客舍 Logo" oncontextmenu="return false;" ondragstart="return false;">
+                </div>
+            </a>
+            
+            <button id="auth-btn" class="admin-icon-btn" onclick="handleHeaderAuthAction()" title="管理員登入">
+                <img id="auth-btn-img" src="/images/logo-small2.png" alt="管理員模式">
+            </button>
+            
+            <button class="menu-toggle" aria-label="打開選單">☰</button>
+        </div>
+        
+        <nav class="header-nav-links">
+            <a href="/passionprojects">自主企劃</a>
+            <a href="https://linktr.ee/Slowpace_studio" target="_blank" rel="noopener noreferrer">活動報名</a>
+            <a href="/timetable/slowpacestudio/">客舍時間表</a>
+            <a href="/timetable/slowpacehostel/">客棧時間表</a>
+            <a href="/gaming">悠閒小遊戲</a>
+            <a href="/newsletter.html">客舍電子報</a>
+            <a href="/skillsupermarket.html">客舍萬事屋</a>
+            
+            <div class="more-dropdown" id="more-menu" style="display: none;">
+                <a href="#" class="more-toggle" onclick="return false;">更多 ▾</a>
+                <div class="more-dropdown-content" id="overflow-links"></div>
+            </div>
+
+            <button class="search-icon-btn" onclick="triggerGlobalSearch()" title="全域搜尋">🔍</button>
+        </nav>
+    </div>
+</header>
 
 <style>
     /* ==========================================================================
@@ -41,7 +81,7 @@
         transition: opacity 0.2s;
     }
 
-    /* 🛠️ 新增：管理員登入圖示按鈕樣式 */
+    /* 管理員登入圖示按鈕樣式 */
     .admin-icon-btn {
         background: none;
         border: none;
@@ -58,10 +98,10 @@
         transform: scale(1.05);
     }
     .admin-icon-btn.logged-in {
-        color: #2c3e2f; /* 登入後變換深綠色或特定顏色 */
+        color: #2c3e2f; 
     }
 
-    /* 🛠️ 新增：全域搜索圖示樣式 */
+    /* 全域搜索圖示樣式 */
     .search-icon-btn {
         background: none;
         border: none;
@@ -125,7 +165,7 @@
     }
 
     /* 盒子裡面的連結樣式 */
-    .more-dropdown-content a {
+    .more-dropdown-content :global(a) {
         color: #333333 !important;
         padding: 12px 16px !important;
         text-decoration: none !important;
@@ -133,22 +173,21 @@
         text-align: left !important;
     }
 
-    .more-dropdown-content a:hover {
+    .more-dropdown-content :global(a:hover) {
         background-color: #f5f5f5 !important;
         color: #1465A3 !important;
     }
 
     /* 預設訪客狀態：圖片半透明 */
-  #auth-btn #auth-btn-img {
-      width: 40px;
-      height: auto;
-
-  }
-  /* 當按鈕加上 .logged-in 類別時（管理員登入），自動變亮並發光 */
-  #auth-btn.logged-in #auth-btn-img {
-      opacity: 1;
-      filter: drop-shadow(0 0 6px rgba(20, 101, 163, 0.6));
-  }
+    #auth-btn #auth-btn-img {
+        width: 40px;
+        height: auto;
+    }
+    /* 當按鈕加上 .logged-in 類別時（管理員登入），自動變亮並發光 */
+    #auth-btn.logged-in #auth-btn-img {
+        opacity: 1;
+        filter: drop-shadow(0 0 6px rgba(20, 101, 163, 0.6));
+    }
 
     /* 手機版斷點 */
     @media (max-width: 768px) {
@@ -206,37 +245,93 @@
     }
 </style>
 
-<header class="header-navbar">
-    <div class="header-navbar-container">
-        <div class="header-logo-area">
-            <a href="/" class="header-logo-link" aria-label="回到首頁">
-                <div class="header-logo-icon">
-                    <img src="/images/logo-word.png" alt="空間客舍 Logo" oncontextmenu="return false;" ondragstart="return false;">
-                </div>
-            </a>
-            
-<button id="auth-btn" class="admin-icon-btn" onclick="handleHeaderAuthAction()" title="管理員登入">
-    <img id="auth-btn-img" src="/images/logo-small2.png" alt="管理員模式">
-</button>
-            
-            <button class="menu-toggle" aria-label="打開選單">☰</button>
-        </div>
-        
-        <nav class="header-nav-links">
-            <a href="/passionprojects">自主企劃</a>
-            <a href="https://linktr.ee/Slowpace_studio" target="_blank" rel="noopener noreferrer">活動報名</a>
-            <a href="/timetable/slowpacestudio/">客舍時間表</a>
-            <a href="/timetable/slowpacehostel/">客棧時間表</a>
-            <a href="/gaming">悠閒小遊戲</a>
-            <a href="/newsletter.html">客舍電子報</a>
-            <a href="/skillsupermarket.html">客舍萬事屋</a>
-            
-            <div class="more-dropdown" id="more-menu" style="display: none;">
-                <a href="#" class="more-toggle">更多 ▾</a>
-                <div class="more-dropdown-content" id="overflow-links"></div>
-            </div>
+<script>
+    // 預留空函式防止點擊錯誤，你可以替換成你實際的搜尋/登入逻辑
+    window.handleHeaderAuthAction = window.handleHeaderAuthAction || function() {
+        console.log("管理員登入點擊");
+        document.getElementById('auth-btn')?.classList.toggle('logged-in');
+    };
 
-            <button class="search-icon-btn" onclick="triggerGlobalSearch()" title="全域搜尋">🔍</button>
-        </nav>
-    </div>
-</header>
+    window.triggerGlobalSearch = window.triggerGlobalSearch || function() {
+        console.log("觸發全域搜尋");
+    };
+
+    // 啟動選單控制與自動收納功能
+    setupHeaderMenu();
+
+    function setupHeaderMenu() {
+        const toggleButton = document.querySelector('.menu-toggle') as HTMLButtonElement | null;
+        const navLinks = document.querySelector('.header-nav-links') as HTMLElement | null;
+
+        // --- (A) 手機版漢堡選單開關邏輯 ---
+        if (toggleButton && navLinks) {
+            toggleButton.onclick = function(e) {
+                navLinks.classList.toggle('active');
+                e.stopPropagation();
+            };
+
+            document.addEventListener('click', function(e) {
+                const target = e.target as HTMLElement;
+                if (navLinks.classList.contains('active') && !navLinks.contains(target) && target !== toggleButton) {
+                    navLinks.classList.remove('active');
+                }
+            });
+        }
+
+        // --- (B) 智能偵測寬度：過長項目收進「更多」演算法 ---
+        const mainNav = document.querySelector('.header-nav-links') as HTMLElement | null;
+        if (!mainNav) return;
+
+        let moreMenu = document.getElementById('more-menu') as HTMLElement | null;
+        let overflowLinks = document.getElementById('overflow-links') as HTMLElement | null;
+        
+        // 找出所有原本的連結項目（排除掉「更多」和「搜尋」按鈕本身）
+        const searchBtn = document.querySelector('.search-icon-btn');
+        const allLinks = Array.from(mainNav.children).filter(el => el !== moreMenu && el !== searchBtn && el.tagName === 'A') as HTMLElement[];
+
+        function adjustNavItems() {
+            if (!mainNav || !moreMenu || !overflowLinks) return;
+
+            // 📱 如果是手機版，還原排列並隱藏「更多」
+            if (window.innerWidth <= 768) {
+                allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
+                moreMenu.style.display = 'none';
+                return;
+            }
+
+            // 💻 電腦版自動收納計算
+            moreMenu.style.display = 'none'; 
+            overflowLinks.innerHTML = '';    
+            allLinks.forEach(item => mainNav.insertBefore(item, moreMenu)); 
+
+            let navContainerWidth = mainNav.offsetWidth;
+            let totalWidth = 0;
+            let isOverflow = false;
+            const moreBtnWidth = 90; // 「更多 ▾」按鈕寬度緩衝
+
+            for (let i = 0; i < allLinks.length; i++) {
+                const item = allLinks[i];
+
+                if (isOverflow) {
+                    overflowLinks.appendChild(item);
+                    continue;
+                }
+
+                const itemStyle = window.getComputedStyle(item);
+                const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
+                const marginRight = parseFloat(itemStyle.marginRight) || 0;
+                totalWidth += item.offsetWidth + marginLeft + marginRight;
+
+                if (totalWidth + moreBtnWidth > navContainerWidth) {
+                    isOverflow = true;
+                    moreMenu.style.display = 'inline-block'; 
+                    overflowLinks.appendChild(item);         
+                }
+            }
+        }
+
+        // 初始化並綁定
+        adjustNavItems();
+        window.addEventListener('resize', adjustNavItems);
+    }
+</script>
