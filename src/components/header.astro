@@ -21,9 +21,7 @@
             </button>
             
             <button class="menu-toggle" aria-label="打開選單">☰</button>
-        </div>
-        
-        <nav class="header-nav-links">
+        </div> <nav class="header-nav-links">
             <a href="/passionprojects">自主企劃</a>
             <a href="https://linktr.ee/Slowpace_studio" target="_blank" rel="noopener noreferrer">活動報名</a>
             <a href="/timetable/slowpacestudio/">客舍時間表</a>
@@ -38,9 +36,7 @@
             </div>
 
             <button class="search-icon-btn" onclick="triggerGlobalSearch()" title="全域搜尋">🔍</button>
-        </nav>
-    </div>
-</header>
+        </nav> </div> </header>
 
 <style>
     /* ==========================================================================
@@ -246,20 +242,17 @@
 </style>
 
 <script>
-    // 預留空函式防止點擊錯誤，你可以替換成你實際的搜尋/登入逻辑
-    window.handleHeaderAuthAction = window.handleHeaderAuthAction || function() {
+    // 1. 先宣告所有全域方法與函式變數（使用箭頭函式，確保語法解析最乾淨）
+    window.handleHeaderAuthAction = window.handleHeaderAuthAction || (() => {
         console.log("管理員登入點擊");
         document.getElementById('auth-btn')?.classList.toggle('logged-in');
-    };
+    });
 
-    window.triggerGlobalSearch = window.triggerGlobalSearch || function() {
+    window.triggerGlobalSearch = window.triggerGlobalSearch || (() => {
         console.log("觸發全域搜尋");
-    };
+    });
 
-    // 啟動選單控制與自動收納功能
-    setupHeaderMenu();
-
-    function setupHeaderMenu() {
+    const setupHeaderMenu = () => {
         const toggleButton = document.querySelector('.menu-toggle') as HTMLButtonElement | null;
         const navLinks = document.querySelector('.header-nav-links') as HTMLElement | null;
 
@@ -285,11 +278,10 @@
         let moreMenu = document.getElementById('more-menu') as HTMLElement | null;
         let overflowLinks = document.getElementById('overflow-links') as HTMLElement | null;
         
-        // 找出所有原本的連結項目（排除掉「更多」和「搜尋」按鈕本身）
         const searchBtn = document.querySelector('.search-icon-btn');
         const allLinks = Array.from(mainNav.children).filter(el => el !== moreMenu && el !== searchBtn && el.tagName === 'A') as HTMLElement[];
 
-        function adjustNavItems() {
+        const adjustNavItems = () => {
             if (!mainNav || !moreMenu || !overflowLinks) return;
 
             // 📱 如果是手機版，還原排列並隱藏「更多」
@@ -307,31 +299,33 @@
             let navContainerWidth = mainNav.offsetWidth;
             let totalWidth = 0;
             let isOverflow = false;
-            const moreBtnWidth = 90; // 「更多 ▾」按鈕寬度緩衝
+            const moreBtnWidth = 90; 
 
             for (let i = 0; i < allLinks.length; i++) {
                 const item = allLinks[i];
 
                 if (isOverflow) {
                     overflowLinks.appendChild(item);
-                    continue;
-                }
+                } else {
+                    const itemStyle = window.getComputedStyle(item);
+                    const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
+                    const marginRight = parseFloat(itemStyle.marginRight) || 0;
+                    totalWidth += item.offsetWidth + marginLeft + marginRight;
 
-                const itemStyle = window.getComputedStyle(item);
-                const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
-                const marginRight = parseFloat(itemStyle.marginRight) || 0;
-                totalWidth += item.offsetWidth + marginLeft + marginRight;
-
-                if (totalWidth + moreBtnWidth > navContainerWidth) {
-                    isOverflow = true;
-                    moreMenu.style.display = 'inline-block'; 
-                    overflowLinks.appendChild(item);         
+                    if (totalWidth + moreBtnWidth > navContainerWidth) {
+                        isOverflow = true;
+                        moreMenu.style.display = 'inline-block'; 
+                        overflowLinks.appendChild(item);         
+                    }
                 }
             }
-        }
+        };
 
         // 初始化並綁定
         adjustNavItems();
         window.addEventListener('resize', adjustNavItems);
-    }
+    };
+
+    // 2. 最後才執行初始化（遵循先定義、後執行的嚴格流向，消除 ts7027 的分析誤判）
+    setupHeaderMenu();
 </script>
