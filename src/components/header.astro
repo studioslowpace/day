@@ -242,20 +242,21 @@
 </style>
 
 <script>
-    // 🟢 1. 將管理員按鈕點擊事件綁定到全域 window 上
-    window.handleHeaderAuthAction = window.handleHeaderAuthAction || (() => {
+    // 🟢 1. 管理員模式按鈕點擊事件監聽
+    const setupAuthButton = () => {
         const authBtn = document.getElementById('auth-btn');
         const body = document.body;
 
-        if (authBtn) {
-            // 切換按鈕的登入狀態樣式（發光 / 恢復半透明）
+        if (!authBtn) return;
+
+        // 綁定點擊事件，代替原本 HTML 上的 onclick
+        authBtn.addEventListener('click', () => {
             const isLoggedIn = authBtn.classList.toggle('logged-in');
             
             if (isLoggedIn) {
                 console.log("🔓 已開啟管理員模式（前端模擬）");
                 body.classList.add('admin-mode-active');
                 
-                // 如果畫面上正好有後台的「新增區塊」，順便讓它顯示
                 const addBlock = document.getElementById('clubGlobalAddBlock');
                 if (addBlock) addBlock.style.display = 'flex';
             } else {
@@ -265,12 +266,14 @@
                 const addBlock = document.getElementById('clubGlobalAddBlock');
                 if (addBlock) addBlock.style.display = 'none';
             }
-        }
-    });
+        });
+    };
 
+    // 全域搜尋（如果其他地方有用到原生 onclick 觸發則保留，若無也可以比照辦理改 addEventListener）
     window.triggerGlobalSearch = window.triggerGlobalSearch || (() => {
         console.log("觸發全域搜尋");
     });
+
 
     // 🟢 2. 頁首選單與智慧收納控制邏輯
     const setupHeaderMenu = () => {
@@ -305,6 +308,7 @@
         const adjustNavItems = () => {
             if (!mainNav || !moreMenu || !overflowLinks) return;
 
+            // 手機版：重置回全顯示
             if (window.innerWidth <= 768) {
                 allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
                 moreMenu.style.display = 'none';
@@ -317,33 +321,40 @@
 
             let navContainerWidth = mainNav.offsetWidth;
             let totalWidth = 0;
-            let isOverflow = false;
             const moreBtnWidth = 90; 
 
             for (let i = 0; i < allLinks.length; i++) {
                 const item = allLinks[i];
+                const itemStyle = window.getComputedStyle(item);
+                const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
+                const marginRight = parseFloat(itemStyle.marginRight) || 0;
+                totalWidth += item.offsetWidth + marginLeft + marginRight;
 
-                if (isOverflow) {
-                    overflowLinks.appendChild(item);
-                } else {
-                    const itemStyle = window.getComputedStyle(item);
-                    const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
-                    const marginRight = parseFloat(itemStyle.marginRight) || 0;
-                    totalWidth += item.offsetWidth + marginLeft + marginRight;
-
-                    if (totalWidth + moreBtnWidth > navContainerWidth) {
-                        isOverflow = true;
-                        moreMenu.style.display = 'inline-block'; 
-                        overflowLinks.appendChild(item);         
-                    }
+                // 💡 調整核心：一旦超過寬度，把目前及剩下所有的 items 一起丟進下拉選單，然後直接中斷迴圈
+                if (totalWidth + moreBtnWidth > navContainerWidth) {
+                    moreMenu.style.display = 'inline-block'; 
+                    
+                    // 取得從目前到最後的所有選單項目
+                    const remainingLinks = allLinks.slice(i);
+                    remainingLinks.forEach(link => overflowLinks!.appendChild(link));
+                    
+                    break; // 👈 結束迴圈，完美解決 Unreachable code 問題
                 }
             }
         };
 
+        // 執行初次計算
         adjustNavItems();
-        window.addEventListener('resize', adjustNavItems);
+        
+        // 🚀 加入防抖優化（Debounce），避免縮放視窗時瘋狂重繪導致卡頓
+        let resizeTimeout: number;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = window.setTimeout(adjustNavItems, 100);
+        });
     };
 
-    // 執行初始化
+    // 執行所有初始化
+    setupAuthButton();
     setupHeaderMenu();
 </script>
