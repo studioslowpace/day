@@ -242,21 +242,42 @@
 </style>
 
 <script>
-    // 1. 先宣告所有全域方法與函式變數（使用箭頭函式，確保語法解析最乾淨）
+    // 🟢 1. 將管理員按鈕點擊事件綁定到全域 window 上
     window.handleHeaderAuthAction = window.handleHeaderAuthAction || (() => {
-        console.log("管理員登入點擊");
-        document.getElementById('auth-btn')?.classList.toggle('logged-in');
+        const authBtn = document.getElementById('auth-btn');
+        const body = document.body;
+
+        if (authBtn) {
+            // 切換按鈕的登入狀態樣式（發光 / 恢復半透明）
+            const isLoggedIn = authBtn.classList.toggle('logged-in');
+            
+            if (isLoggedIn) {
+                console.log("🔓 已開啟管理員模式（前端模擬）");
+                body.classList.add('admin-mode-active');
+                
+                // 如果畫面上正好有後台的「新增區塊」，順便讓它顯示
+                const addBlock = document.getElementById('clubGlobalAddBlock');
+                if (addBlock) addBlock.style.display = 'flex';
+            } else {
+                console.log("🔒 已關閉管理員模式");
+                body.classList.remove('admin-mode-active');
+                
+                const addBlock = document.getElementById('clubGlobalAddBlock');
+                if (addBlock) addBlock.style.display = 'none';
+            }
+        }
     });
 
     window.triggerGlobalSearch = window.triggerGlobalSearch || (() => {
         console.log("觸發全域搜尋");
     });
 
+    // 🟢 2. 頁首選單與智慧收納控制邏輯
     const setupHeaderMenu = () => {
         const toggleButton = document.querySelector('.menu-toggle') as HTMLButtonElement | null;
         const navLinks = document.querySelector('.header-nav-links') as HTMLElement | null;
 
-        // --- (A) 手機版漢堡選單開關邏輯 ---
+        // --- (A) 手機版漢堡選單開關 ---
         if (toggleButton && navLinks) {
             toggleButton.onclick = function(e) {
                 navLinks.classList.toggle('active');
@@ -271,7 +292,7 @@
             });
         }
 
-        // --- (B) 智能偵測寬度：過長項目收進「更多」演算法 ---
+        // --- (B) 智慧偵測寬度收納演算法 ---
         const mainNav = document.querySelector('.header-nav-links') as HTMLElement | null;
         if (!mainNav) return;
 
@@ -284,14 +305,12 @@
         const adjustNavItems = () => {
             if (!mainNav || !moreMenu || !overflowLinks) return;
 
-            // 📱 如果是手機版，還原排列並隱藏「更多」
             if (window.innerWidth <= 768) {
                 allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
                 moreMenu.style.display = 'none';
                 return;
             }
 
-            // 💻 電腦版自動收納計算
             moreMenu.style.display = 'none'; 
             overflowLinks.innerHTML = '';    
             allLinks.forEach(item => mainNav.insertBefore(item, moreMenu)); 
@@ -321,11 +340,10 @@
             }
         };
 
-        // 初始化並綁定
         adjustNavItems();
         window.addEventListener('resize', adjustNavItems);
     };
 
-    // 2. 最後才執行初始化（遵循先定義、後執行的嚴格流向，消除 ts7027 的分析誤判）
+    // 執行初始化
     setupHeaderMenu();
 </script>
