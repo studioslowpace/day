@@ -2,10 +2,8 @@
 // 匯入 Layout
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
-<BaseLayout title="首頁 - 歡迎來到我的網站">
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
+<BaseLayout>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>空間客舍 Slow Pace Studio</title>
@@ -431,7 +429,7 @@ width: 100%;               /* 在手機版預設撐滿父容器 */
 }
 }
     </style>
-</head>
+
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZBQ95KH0ET"></script>
 <script>
@@ -441,14 +439,14 @@ width: 100%;               /* 在手機版預設撐滿父容器 */
 
   gtag('config', 'G-ZBQ95KH0ET');
 </script>
-<body>
+
 
 
 <div id="header-container" class="navbar-wrapper"></div>
 
     <section class="hero-banner">
         <div class="banner__badge-oval">
-            <img src="images/header_r1.png" class="banner__badge-content" alt="眼鏡插畫徽章" oncontextmenu="return false;" ondragstart="return false;">
+            <img src="/images/header_r1.png" class="banner__badge-content" alt="眼鏡插畫徽章" oncontextmenu="return false;" ondragstart="return false;">
         </div>
     </section>
 
@@ -464,7 +462,7 @@ width: 100%;               /* 在手機版預設撐滿父容器 */
             <aside class="content-right">
                 <div class="sticky-brand">
                     <div class="main-avatar">
-                        <img src="images/logo-square.png" alt="空間客舍 品牌大圖" oncontextmenu="return false;" ondragstart="return false;">
+                        <img src="/images/logo-square.png" alt="空間客舍 品牌大圖" oncontextmenu="return false;" ondragstart="return false;">
                     </div>
                 </div>
             </aside>
@@ -476,14 +474,14 @@ width: 100%;               /* 在手機版預設撐滿父容器 */
       <div class="neighbour-card">
         <h2>成為鄰里人</h2>
     <h3>Becoming<br>our<br>neighbour</h3>
-      <img src="images/neighbour1.PNG" alt="鄰里人" class="neighbour-img" oncontextmenu="return false;" ondragstart="return false;">
+      <img src="/images/neighbour1.PNG" alt="鄰里人" class="neighbour-img" oncontextmenu="return false;" ondragstart="return false;">
       <div class="neighbour-info">
         <h4>鄰里人</h4>
         <p>參加活動，即可獲得資格<br>福利：一個月Pass，其後每個活動可獲-$20之優惠</p>
       </div>
       
 
-      <img src="images/neighbour2.PNG" alt="客舍人" class="neighbour-img2" oncontextmenu="return false;" ondragstart="return false;">
+      <img src="/images/neighbour2.PNG" alt="客舍人" class="neighbour-img2" oncontextmenu="return false;" ondragstart="return false;">
       <div class="neighbour-info2">
         <h4>客舍人</h4>
         <p>贊助客舍$300，即可獲得資格<br>福利：三個月Pass，所有讀書會、電影放映、音樂會、傾計會為免費</p>
@@ -630,6 +628,4 @@ function setupHeaderMenu() {
     </script>
 
     
-</body>
-</html>
 </BaseLayout>
