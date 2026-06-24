@@ -2,7 +2,7 @@
 // =========================================================================
 // 1. Astro 圍欄區：這裡的程式碼只在「GitHub Actions 打包時」執行 (SEO 核心)
 // =========================================================================
-import Layout from '../layouts/Layout.astro';
+import BaseLayout from '../layouts/Baselayout.astro';
 
 const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
 const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
@@ -24,8 +24,7 @@ if (response.ok) {
 }
 ---
 
-<Layout>
-  <div id="header-container"></div>    
+<BaseLayout> 
 
   <main class="main-container">
     
@@ -129,8 +128,8 @@ if (response.ok) {
     </div>
   </div>
 
-  <footer id="global-footer" class="custom-footer"></footer>
-</Layout>
+
+</Baselayout>
 
 <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
