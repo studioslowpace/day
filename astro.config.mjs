@@ -1,7 +1,6 @@
 import { defineConfig } from 'astro/config';
-import cloudflare from '@astrojs/cloudflare';
 
+// 確保長這樣就好，不要有 import cloudflare 或 adapter: cloudflare()
 export default defineConfig({
-  output: 'server', // 開啟伺服器渲染
-  adapter: cloudflare(),
+  output: 'static', 
 });
