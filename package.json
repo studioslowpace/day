@@ -11,7 +11,7 @@
   "start": "astro dev",
   "build": "astro build",
   "preview": "astro preview"
-}
+},
   "dependencies": {
     "astro": "^6.4.7"
   }
