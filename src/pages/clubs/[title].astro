@@ -37,12 +37,12 @@ const { club, allClubs, currentIndex } = Astro.props;
 const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : '';
 ---
 
-<Layout>
+<BaseLayout>
   <Fragment slot="head">
     <title>客舍讀書會 Slow Pace Reading Clubs - {club.title || '詳細內容'}</title>
   </Fragment>
 
-  <div id="header-container"></div>    
+   
 
   <main class="main-container">
     <div class="detail-view-container" id="detailViewArea" style="display: block;">
@@ -68,8 +68,8 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
     </div>
   </main>
 
-  <footer id="global-footer" class="custom-footer"></footer>
-</Layout>
+
+</BaseLayout>
 
 <script is:inline define:vars={{ allClubs, currentIndex, club }} >
   window.globalClubsData = allClubs;
