@@ -403,6 +403,37 @@ width: 100%;}
 
     window.study_isAdminMode = false;        
 
+
+    // 📦 2. 【補上這段】非同步載入外部 header.html
+    async function loadExternalHeader() {
+        try {
+            const response = await fetch('/header.html');
+            if (!response.ok) throw new Error('無法尋找到外部 header.html 檔案');
+            
+            const htmlText = await response.text();
+            const headerPlaceholder = document.getElementById('header-placeholder');
+            if (headerPlaceholder) {
+                headerPlaceholder.innerHTML = htmlText;
+            }
+            
+            const headerAuthBtn = document.getElementById('auth-btn');
+            if (headerAuthBtn) headerAuthBtn.addEventListener('click', handleHeaderAuthAction);
+            
+            const secretAdminLogo = document.getElementById('secretAdminLogo');
+            if (secretAdminLogo) secretAdminLogo.addEventListener('click', handleHeaderAuthAction);
+            
+            if (typeof setupHeaderMenu === 'function') {
+                setupHeaderMenu();
+            }
+            
+            if (typeof syncAdminUI === 'function') {
+                await syncAdminUI();
+            }
+        } catch (err) {
+            console.error('載入外部 Header 失敗:', err);
+        }
+    }
+    
     // 🔄 1. 核心權限 UI 狀態同步
     async function syncAdminUI() {
         if (!window.client || !window.client.auth) return;
