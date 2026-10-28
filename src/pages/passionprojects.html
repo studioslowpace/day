@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自主企劃 Passion Project</title>
+    <style>
+        
+        *, *::before, *::after {
+  box-sizing: border-box;
+}
+        body {
+              font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+            background-color: #f0f7fc; 
+            color: #333;
+            margin: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            margin-top: 50px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #555;
+            font-weight: normal;
+            margin: 0 0 10px 0;
+            letter-spacing: 2px;
+        }
+        .header h2 {
+            font-size: 24px;
+            color: #777;
+            font-weight: normal;
+            margin: 0 0 10px 0;
+            font-family: Georgia, serif;
+        }
+        .header p {
+            font-size: 16px;
+            color: #888;
+            margin: 0;
+            line-height: 1.5;
+            letter-spacing: 1px;
+        }
+
+        .grid-container {
+            margin-left: auto; margin-right: auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1000px;
+            gap: 40px 30px; 
+            margin-bottom: 50px;
+
+        }
+
+
+        .grid-item {
+            flex: 1 1 280px;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .grid-item a {
+            font-size: 20px;
+            color: #85be44;
+            text-decoration: underline;    /* 加上底線 */
+            text-underline-offset: 6px;  /* 數字越大，底線離字就越遠 */
+            display: inline-block;        /* 讓上下間距 (margin) 可以正常生效 */
+            margin: 15px 0;               /* 上下留出 15px 的間隔，左右為 0 */
+           letter-spacing: 2px;
+        }
+
+        /* 圓形容器：設定超出即裁切 */
+        .img-link {
+            display: block;
+            width: 160px;
+            height: 160px;
+            background-color: #ffffff; 
+            border-radius: 50%;        
+            margin-bottom: 25px;
+            overflow: hidden;          /* 完美裁切不溢出 */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .img-link:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+        }
+
+        /* 圖片項目：設定自動填滿 */
+        .img-link img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;         /* 自動填滿圓形 */
+            object-position: center;   /* 置中對齊 */
+        }
+
+
+        .description {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre-line;  
+            letter-spacing: 1.2px;  
+        }
+
+        .mobile-only {
+    display: none;
+}
+
+            /* 📱 RWD 手機板優化 */
+    @media (max-width: 600px) {
+        .mobile-only {
+        display: inline; /* 恢復換行功能 */
+    }
+    }
+    </style>
+</head>
+<body>
+
+    <div id="header-container"></div>  
+
+    <div class="header">
+        <h1>自主企劃</h1>
+        <h2>Passion Project</h2>
+        <p>鄰里人的空間實驗 <br class="mobile-only">Experiments by Slow Pace Neighbour</p>
+    </div>
+
+    <div class="grid-container">
+
+        <div class="grid-item">
+            <a href="/studying" class="img-link">
+                <img src="/images/study.jpg" alt="空間共學" oncontextmenu="return false;" ondragstart="return false;">
+            </a>
+            <a>空間共學</a>
+            <p class="description">透過文本和兩隻腳去探索周遭空間
+            連結身處於不同空間的人
+            以共學的方式一起學習和分享</p>
+        </div>
+
+        <div class="grid-item">
+            <a href="/reading/" class="img-link">
+                <img src="/images/read.jpg" alt="圍爐讀書" oncontextmenu="return false;" ondragstart="return false;">
+            </a>
+            <a>圍爐讀書</a>
+            <p class="description">圍爐共同學習</p>
+        </div>
+
+        <div class="grid-item">
+            <a href="/walking" class="img-link">
+                <img src="/images/walk.jpg" alt="喃喃渡步" oncontextmenu="return false;" ondragstart="return false;">
+            </a>
+            <a>喃喃渡步</a>
+            <p class="description">提出一條思辨題目
+            各自表述因由
+            自由分享</p>
+        </div>
+
+        <div class="grid-item">
+            <a href="/talking" class="img-link">
+                <img src="/images/talk.jpg" alt="來一場談話" oncontextmenu="return false;" ondragstart="return false;">
+            </a>
+            <a>來一場談話</a>
+            <p class="description">可以是一本書、一篇文、<br>一首詩、一段文字、一齣戲、<br>一首歌、一個故事、一個理由…
+            請帶來一起談談關於 __ __ 的看法</p>
+        </div>
+
+        <div class="grid-item">
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLScy6-MEExoI7nLnd8cQq6DHyGg_ekePknS35lv3brzVgTbXog/viewform" class="img-link" target="_blank" rel="noopener noreferrer">
+                <img src="/images/story.jpg" alt="故事時間" oncontextmenu="return false;" ondragstart="return false;">
+            </a>
+            <a>故事時間</a>
+            <p class="description">以明信片的方式分享故事</p>
+        </div>
+
+        <div class="grid-item">
+            <a href="https://linktr.ee/Slowpace_studio?utm_source=linktree_profile_share&ltsid=53ad2931-15a3-4c19-856e-9c90179ded10" class="img-link" target="_blank" rel="noopener noreferrer">
+                <img src="/images/song.jpg" alt="空間歌單" oncontextmenu="return false;" ondragstart="return false;">
+            </a>
+            <a>空間歌單</a>
+            <p class="description">以音樂歌單作為媒介
+            徘徊於空間的想像當中</p>
+        </div>
+
+    </div>
+
+      <footer id="global-footer" class="custom-footer"></footer>
+
+      <script>
+
+        // ==========================================
+// 載入頁首並處理年份（維持原樣）
+// ==========================================  
+fetch('/header.html')
+    .then(response => response.text())
+    .then(data => {
+        const container = document.getElementById('header-container');
+        if (container) {
+            container.innerHTML = data;
+            setupHeaderMenu(); // 🛠️ 載入完成後，啟動選單核心與自動收納功能
+        }
+    })
+    .catch(err => console.error("頁首載入失敗:", err));
+
+    // ==========================================================================
+    // 【7. Header 智慧導覽選單演算法】
+    // ==========================================================================
+    function setupHeaderMenu() {
+        const toggleButton = document.querySelector('.menu-toggle');
+        const navLinks = document.querySelector('.header-nav-links');
+
+        if (toggleButton && navLinks) {
+            toggleButton.onclick = function(e) {
+                navLinks.classList.toggle('active');
+                e.stopPropagation();
+            };
+
+            document.onclick = function(e) {
+                if (navLinks.classList.contains('active') && !navLinks.contains(e.target) && e.target !== toggleButton) {
+                    navLinks.classList.remove('active');
+                }
+            };
+        }
+
+        const mainNav = document.querySelector('.header-nav-links'); 
+        if (!mainNav) return;
+
+        let moreMenu = document.getElementById('more-menu');
+        let overflowLinks = document.getElementById('overflow-links');
+        
+        if (!moreMenu) {
+            moreMenu = document.createElement('div');
+            moreMenu.id = 'more-menu';
+            moreMenu.className = 'more-dropdown';
+            moreMenu.innerHTML = `
+                <a href="#" class="more-toggle" onclick="return false;">更多 ▾</a>
+                <div class="more-dropdown-content" id="overflow-links"></div>
+            `;
+            mainNav.appendChild(moreMenu);
+            overflowLinks = document.getElementById('overflow-links');
+        }
+
+        const allLinks = Array.from(mainNav.children).filter(el => el !== moreMenu && el.tagName === 'A');
+        const searchBtn = mainNav.querySelector('.search-icon-btn');
+
+        function adjustNavItems() {
+            if (window.innerWidth <= 768) {
+                allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
+                if (searchBtn) mainNav.appendChild(searchBtn);
+                moreMenu.style.display = 'none';
+                return;
+            }
+
+            moreMenu.style.display = 'none'; 
+            overflowLinks.innerHTML = '';    
+            allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
+            if (searchBtn) mainNav.appendChild(searchBtn);
+
+            let navContainerWidth = mainNav.offsetWidth;
+            let totalWidth = 0;
+            let isOverflow = false;
+            
+            const moreBtnWidth = 90; 
+            const searchBtnWidth = searchBtn ? (searchBtn.offsetWidth || 50) : 50;
+
+            for (let i = 0; i < allLinks.length; i++) {
+                const item = allLinks[i];
+                if (isOverflow) {
+                    overflowLinks.appendChild(item);
+                    continue;
+                }
+
+                const itemStyle = window.getComputedStyle(item);
+                const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
+                const marginRight = parseFloat(itemStyle.marginRight) || 0;
+                totalWidth += item.offsetWidth + marginLeft + marginRight;
+
+                if (totalWidth + moreBtnWidth + searchBtnWidth > navContainerWidth) {
+                    isOverflow = true;
+                    moreMenu.style.display = 'inline-block';
+                    overflowLinks.appendChild(item);
+                }
+            }
+        }
+
+        adjustNavItems();
+        window.removeEventListener('resize', adjustNavItems);
+        window.addEventListener('resize', adjustNavItems);
+    }
+
+// ==========================================
+// 載入頁尾並處理年份（維持原樣）
+// ==========================================
+    fetch('/footer.html')
+    .then(response => response.text())
+    .then(data => {
+        const footerContainer = document.getElementById('global-footer');
+        if (footerContainer) {
+            footerContainer.innerHTML = data;
+            
+            // 頁尾載入完成後，更新年份
+            const yearSpan = document.getElementById('current-year');
+            if (yearSpan) {
+                yearSpan.textContent = new Date().getFullYear();
+            }
+        }
+    })
+    .catch(err => console.error("頁尾載入失敗:", err));
+
+      </script>
+
+</body>
+</html>

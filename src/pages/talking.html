@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>客舍 Slow Pace Studio - 來一場談話</title>
+
+    <link rel="stylesheet" href="https://static.parastorage.com/services/wix-thunderbolt/dist/main.92cf8424.min.css">
+    <link rel="stylesheet" href="https://static.parastorage.com/services/wix-thunderbolt/dist/main.renderer.d1b87f2e.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
+
+    <style>
+        /* ==========================================================================
+           【1. 全域與基礎排版樣式】
+           ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #eaeaea; 
+            font-family: Arial, Helvetica, sans-serif;
+            color: #333333;
+        }
+
+        /* 頂部管理員專用黑色工具列（若移至 header.html 可將此 CSS 複製過去） */
+        .admin-toolbar {
+            background: #2c3e2f; 
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .admin-btn {
+            background: #0084ff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .admin-btn.logout { background: #8b0000; } 
+        .admin-btn.add-trigger { background: #2c3e2f; border: 1px solid #ffffff; font-size: 15px; padding: 10px 20px; } 
+        .admin-btn.toggle-mode { background: #6c757d; font-size: 11px; padding: 4px 8px; margin-bottom: 8px; display: inline-block; }
+
+        .mesh-layout {
+            display: grid;
+            grid-template-rows: min-content max-content;
+            grid-template-columns: 100%;
+            justify-content: stretch;
+            align-items: start;
+        }
+
+        #site-root {
+            width: 100%;
+            min-height: 100%;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .wixui-section {
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+
+        /* ==========================================================================
+           【2. SVG 特效標題】
+           ========================================================================== */
+        .title-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 40px; 
+            margin-top: 40px;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        .vector-letter { display: flex; align-items: flex-end; position: relative; }
+        .vector-letter svg { width: 120px; height: 120px; }
+        .vector-letter p { margin: 0 0 10px 8px; font-size: 18px; color: #000000; white-space: nowrap; }
+
+        .letter-1 svg { fill: #0084ff; } 
+        .letter-2 svg { fill: #9b9b9b; } 
+        .letter-3 svg { fill: #8b0000; } 
+        .letter-4 svg { fill: #b8c7ce; } 
+        .letter-5 svg { fill: #b6dc53; } 
+
+        /* ==========================================================================
+           【3. 彈出視窗 (Modal) 共同樣式】
+           ========================================================================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000; 
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease; 
+        }
+
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+        .modal-box {
+            background: #ffffff;
+            width: 90%;
+            max-width: 600px;
+            max-height: 85vh; 
+            overflow-y: auto; 
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-box { transform: translateY(0); }
+
+        /* ==========================================================================
+           【4. 表單與活動排版】
+           ========================================================================== */
+        .editing-input { width: 100%; font-size: 15px; padding: 8px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .editing-textarea { width: 100%; height: 120px; font-size: 14px; line-height: 1.6; padding: 8px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        .upload-preview { display: block; max-width: 140px; margin: 10px 0; border: 1px dashed #ccc; padding: 4px; border-radius: 4px; }
+        .compressing-status { color: #ff9800; font-size: 12px; display: none; margin-bottom: 10px; font-weight: bold; }
+
+        .event-block { display: flex; flex-direction: row; gap: 40px; align-items: flex-start; width: 100%; box-sizing: border-box; }
+
+        /* 活動間隔線 */
+        .event-separator {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(to right, rgba(0,0,0,0), rgba(200,200,200,1), rgba(0,0,0,0)); 
+            margin: 40px 0; 
+        }
+
+        .event-image img {
+            width: 306px;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            -webkit-touch-callout: none; 
+        }
+
+        .event-content { flex: 1; position: relative; }
+        .event-content h2 { font-size: 22px; color: #2c3e2f; margin-top: 0; margin-bottom: 15px; font-weight: normal; }
+        .event-content p { font-size: 14px; line-height: 1.8; color: #444444; text-align: justify; }
+
+        .order-badge { display: inline-block; background: #777777; color: white; font-size: 11px; padding: 1px 5px; border-radius: 3px; margin-left: 8px; font-weight: bold; vertical-align: middle; }
+        .edit-badge { display: inline-block; background: #ff9800; color: white; font-size: 12px; padding: 2px 6px; border-radius: 3px; margin-left: 8px; cursor: pointer; vertical-align: middle; }
+
+        @media (max-width: 768px) {
+            .title-container { flex-wrap: wrap; gap: 20px; justify-content: center; }
+            .vector-letter svg { width: 30px; height: 30px; }
+            .vector-letter p { font-size: 10px; margin: 20px 0 0px 8px;}   
+            .event-block { flex-direction: column; align-items: center; text-align: center; }
+            .event-image img { width: 100%; max-width: 350px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="header-container"></div>    
+
+
+<div id="SITE_CONTAINER">
+    <div id="main_MF" class="main_MF">
+        <main id="PAGES_CONTAINER" class="mesh-layout">
+            <div id="site-root">
+
+                <section class="wixui-section">
+                    <div class="title-container">
+                        <div class="vector-letter letter-1"><svg viewBox="20.001 28.5 160 143"><path d="m178.558 76.544-1.581-13.454c-1.916-16.315-14.204-29.497-30.331-32.545l-3.162-.601a82.6 82.6 0 0 0-30.284-.077l-4.252.78c-15.571 2.86-27.58 15.169-30.213 30.653l-.193-2.846c-.926-13.563-6.845-24.523-14.617-27.057l-4.477-1.458c-5.802-1.894-11.751-1.917-17.553-.077l-5.132 1.629c-7.818 2.479-13.776 13.463-14.702 27.08l-1.223 17.968a363 363 0 0 0 .101 50.73l1.036 14.351c.974 13.525 6.923 24.399 14.687 26.862l5.225 1.66c5.802 1.839 11.751 1.808 17.553-.077l4.579-1.489h.008c7.725-2.517 13.627-13.368 14.601-26.839l.126-1.742c3.075 14.866 14.871 26.548 29.985 29.327l4.454.818a82.8 82.8 0 0 0 30.284-.077l3.356-.632.016.008c16.034-3.024 28.275-16.073 30.3-32.279l1.23-9.885a211 211 0 0 0 .179-50.73Z"></path></svg><p>來</p></div>
+                        <div class="vector-letter letter-2"><svg viewBox="20.001 27.5 159.998 144.999"><path d="M20.441 36.107c.357 2.838-.167 6.014.689 8.585.561 1.683.05 4.525.129 6.349.156 3.566.57 7.144.787 10.71.208 3.424.303 6.901.601 10.319.123 1.409.672 2.777.967 4.183.621 2.961 1.058 5.945 1.484 8.932.395 2.766 2.092 5.436 3.182 7.956 1.477 3.416 2.697 7.592 5.073 10.572 1.506 1.888 3.576 3.417 5.365 5.018 4.133 3.699 8.347 7.712 13.144 10.547 1.299.768 2.457.743 4.071 1.135 6.436 1.563 12.881 3.008 19.462 3.803 4.397.531 9.254 1.309 13.624.345 4.221-.931 8.711-1.139 13.062-1.542-3.855.465-7.623 1.577-11.519 1.992-3.286.35-6.529.611-9.673 1.584-2.533.784-5.411 1.08-7.744 2.081-1.391.597-2.505 1.691-3.88 2.405-.796.413-1.714.431-2.493.802a7.4 7.4 0 0 0-1.777 1.839 106 106 0 0 1-4.058 4.173c-2.418 2.401-4.607 4.981-6.947 7.448-1.632 1.72-3.578 3.168-5.309 4.8-.476.449-1.014.729-1.483 1.148-1.843 1.646-3.037 4.666-4.406 6.705-.436.649-1.682 2.104-1.956 2.993-.293.95-.126 2.393-.091 3.35.072 1.994.676 3.822.413 5.828 3.851.74 8.399-.008 12.294.049q3.967.015 7.915.405 1.921.198 3.847.109c.716.128.912.244 1.549.423a6.5 6.5 0 0 0 2.57-.4 67 67 0 0 1 6.561-.657c9.803-.806 19.719-.29 29.548-.343 3.493-.019 6.934.274 10.357.989 3.102.648 6.106.477 9.283.477 3.952 0 8.297-.469 12.228-.025q.414.206.831.407 1.392.206 2.797.095c1.653.043 3.148.749 4.756.803.727-1.195.353-3.041.371-4.326.026-1.856.567-3.128.923-4.88.299-1.472-.065-2.185-.61-3.517-.32-.78-.443-1.462-.778-2.217-.245-.553-.713-1.336-.911-.379.208-4.48.676-10.005-2.066-13.357-1.482-1.813-3.067-3.521-4.428-5.433-.572-.804-1.039-1.399-1.794-2.016-2.252-1.84-4.535-3.637-6.926-5.29-1.795-1.241-3.443-2.429-5.407-3.461-1.551-.816-2.867-1.95-4.391-2.798-1.087-.605-1.413-.425-2.505-.501-3.942-.273-7.782-1.493-11.741-1.514-.69-.004-1.376.027-2.058.081q.31-.03.619-.063c13.719-1.528 27.993-3.701 41.841-2.951 1.495.081 1.201-.36 2.285-1.386 3.69-3.492 6.827-7.47 10.24-11.234 1.288-1.421 2.544-3.099 3.988-4.362.212-.185.495-.135.729-.124.476-1.068 1.368-2.013 2.112-2.891 1.977-2.334 3.536-4.9 5.097-7.529 1.399-2.356 2.916-4.656 3.842-7.233 2.263-6.296 2.721-13.09 3.583-19.687.289-2.213.223-4.411.223-6.643V43.164c-.49 1.431-.227-.749.301-3.196.477-2.211 1.041-4.364 1.573-6.538.116-.474.365-1.994.01-2.399-.333-.379-2.453-.74-2.868-.832-.601-.133-1.321-.082-1.882-.34-.202-.093-.248-.403-.5-.514-1.317-.581-2.836-.359-4.242-.354-2.58.009-5.16 0-7.74 0-10.787 0-22.48.935-33.098-1.185-2.18-.435-4.344-.278-6.564-.28-10.159-.006-20.312-.111-30.463.462-5.658.319-11.31.779-16.966 1.003-1.168.046-2.197.59-3.365.834-3.713.775-7.357 1.857-11.084 2.573-4.521.868-9.352.682-13.944.461-6.478-.312-12.703-2.199-19.05-3.342-.539-.097-6.296-1.317-7.325-.45-1.351 1.138-.423 5.94-.284 7.044z"></path></svg><p>一</p></div>
+                        <div class="vector-letter letter-3"><svg viewBox="39.5 19.999 121 160.001"><path d="M160.5 99.571c0-9.576-4.27-18.152-11.009-23.957 6.739-5.805 11.009-14.381 11.009-23.957 0-17.484-14.216-31.658-31.752-31.658-12.713 0-23.676 7.453-28.748 18.212-5.071-10.76-16.034-18.212-28.748-18.212-17.536 0-31.752 14.173-31.752 31.658 0 9.576 4.27 18.152 11.009 23.957C43.77 81.419 39.5 89.995 39.5 99.571c0 9.811 4.478 18.579 11.505 24.386-7.028 5.807-11.505 14.574-11.505 24.386-39.5 165.827 53.716 180 71.252 180 12.713 0 23.677-7.452 28.748-18.212 5.071 10.76 16.034 18.212 28.748 18.212 17.536 0 31.752-14.174 31.752-31.657 0-9.811-4.478-18.579-11.505-24.386 7.028-5.807 11.505-14.574 11.505-24.386"></path></svg><p>場</p></div>
+                        <div class="vector-letter letter-4"><svg viewBox="36.5 20 127.001 159.999"><path d="M76.389 20 37.771 52.663 36.5 107.166l7.333 46.313 58.27 26.52 51.914-61.718 9.484-45.923-49.373-47.288L76.39 20Z"></path></svg><p>談</p></div>
+                        <div class="vector-letter letter-5"><svg viewBox="19.999 19.999 159.999 159.999"><path d="M149.797 119.603a30.6 30.6 0 0 0-6.482.658c-8.192 1.731-16.703-.889-22.625-6.779l-2.806-2.791a15.1 15.1 0 0 1-.012-21.422l2.773-2.759c5.928-5.896 14.449-8.514 22.647-6.775 2.089.443 4.258.672 6.483.662 16.412-.072 29.926-13.325 30.218-29.648.306-17.117-13.708-31.055-30.918-30.744-16.115.291-29.319 13.279-29.783 29.305a30 30 0 0 0 .896 8.242c2.131 8.452-.382 17.394-6.576 23.555l-1.961 1.95a15.28 15.28 0 0 1-10.774 4.439 15.28 15.28 0 0 1-10.774-4.439l-3.382-3.365c-6.011-5.979-8.609-14.6-6.742-22.849.531-2.346.787-4.796.732-7.314-.351-16.116-13.593-29.236-29.796-29.525-17.211-.307-31.225 13.637-30.911 30.758.298 16.248 13.701 29.467 30.038 29.632a30.6 30.6 0 0 0 7.391-.824c8.404-1.999 17.246.541 23.356 6.619l2.176 2.165a15.1 15.1 0 0 1 4.463 10.717v1.801c0 4.02-1.605 7.875-4.463 10.717l-2.219 2.208c-6.104 6.072-14.936 8.615-23.334 6.624a30.6 30.6 0 0 0-7.39-.819c-16.329.176-29.72 13.391-30.018 29.631-.315 17.123 13.7 31.067 30.912 30.76 16.21-.289 29.454-13.422 29.795-29.545.053-2.52-.205-4.97-.737-7.317-1.874-8.255.722-16.885 6.737-22.87l2.486-2.473a15.28 15.28 0 0 1 10.774-4.439h1.811c4.041 0 7.917 1.597 10.775 4.439l1.066 1.06c6.2 6.167 8.709 15.119 6.57 23.577a30.2 30.2 0 0 0-.902 8.244c.454 16.033 13.66 29.033 29.783 29.324 17.211.311 31.226-13.627 30.919-30.745-.293-16.314-13.794-29.564-30.198-29.647z"></path></svg><p>話</p></div>
+                    </div>
+                    
+                    <div style="text-align: center; max-width: 600px;">
+                        <h2 style="font-size: 15px; font-weight: normal; color: #555; line-height: 1.6;">
+                            <br>可以是一本書﹑一篇文﹑一首詩﹑一段文字﹑一齣戲﹑一首歌﹑一個故事﹑一個理由……<br><br>請帶來一起傾談吧。
+                        </h2>
+                    </div>
+                </section>
+
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button id="open-add-modal-btn" class="admin-btn add-trigger" style="display: none;" onclick="openAddModalWithAutoOrder()">➕ 加入全新談話資料</button>
+                </div>
+
+                <div id="add-modal" class="modal-overlay">
+                    <div class="modal-box">
+                        <h3 style="margin-top:0; color:#2c3e2f; border-bottom:1px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                            <span>加入全新談話資料</span>
+                            <span style="cursor:pointer; font-size:20px; color:#aaa;" onclick="toggleAddModal(false)">×</span>
+                        </h3>
+                        
+                        <label style="font-size:12px; color:#777; display:block; margin-top:10px;">活動標題：</label>
+                        <input type="text" id="new-title" class="editing-input" placeholder="請輸入全新活動的標題">
+                        
+                        <label style="font-size:12px; color:#777; display:block; margin-top:5px;">排序權重 (數字越大排在越前面。系統已自動加 1 預設排在最頂部)：</label>
+                        <input type="number" id="new-sort" class="editing-input" value="1">
+
+                        <label style="font-size:12px; color:#777; display:block; margin-top:5px;">活動內容描述：</label>
+                        <textarea id="new-desc" class="editing-textarea" placeholder="請輸入活動的詳細內容介紹..."></textarea>
+                        
+        <label style="font-size:12px; color:#2c3e2f; font-weight:bold; display:block; margin-top:15px; border-top:1px dashed #ddd; padding-top:10px;">相片提供方式（二選一）：</label>
+        
+        <div id="new-img-upload-wrapper" style="margin-top: 8px;">
+            <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">方式 A：直接上傳相片檔案</span>
+            <input type="file" id="new-file" accept="image/*" onchange="handleNewImageUpload(event)">
+            <span id="new-compress-status" class="compressing-status" style="display:none;">⏳ 正在智能壓縮圖片...</span>
+        </div>
+        
+        <div id="new-img-path-wrapper" style="margin-top: 12px;">
+            <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">方式 B：手動輸入相片路徑或 GitHub 連結</span>
+            <input type="text" id="new-img-path" class="editing-input" placeholder="請輸入相片相對路徑或外部連結 (例如: images/photo.jpg)">
+        </div>
+                        
+                        <img id="new-preview" class="upload-preview" style="display:none;" oncontextmenu="return false;" ondragstart="return false;">
+
+                        <div style="margin-top: 20px; border-top:1px solid #eee; padding-top:15px; text-align:right; display:flex; justify-content:flex-end; gap:10px;">
+                            <button class="admin-btn" style="background:#9b9b9b;" onclick="toggleAddModal(false)">取消</button>
+                            <button class="admin-btn" style="background:#2c3e2f;" onclick="createNewTalk()">🚀 確定加入資料</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="edit-modal" class="modal-overlay">
+                    <div class="modal-box">
+                        <h3 style="margin-top:0; color:#2c3e2f; border-bottom:1px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                            <span>✏️ 修改談話活動資料</span>
+                            <span style="cursor:pointer; font-size:20px; color:#aaa;" onclick="toggleEditModal(false)">×</span>
+                        </h3>
+                        
+                        <input type="hidden" id="edit-target-id">
+
+                        <label style="font-size:12px; color:#777; display:block; margin-top:10px;">活動標題：</label>
+                        <input type="text" id="edit-title" class="editing-input">
+                        
+                        <label style="font-size:12px; color:#777; display:block; margin-top:5px;">排序權重 (數字越大排在越前面)：</label>
+                        <input type="number" id="edit-sort" class="editing-input">
+
+                        <label style="font-size:12px; color:#777; display:block; margin-top:5px;">活動內容：</label>
+                        <textarea id="edit-desc" class="editing-textarea"></textarea>
+                        
+        <label style="font-size:12px; color:#2c3e2f; font-weight:bold; display:block; margin-top:15px; border-top:1px dashed #ddd; padding-top:10px;">相片提供方式（二選一 / 不更換請留空）：</label>
+        
+        <div id="edit-img-upload-wrapper" style="margin-top: 8px;">
+            <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">方式 A：選取新相片覆蓋</span>
+            <input type="file" id="edit-file" accept="image/*" onchange="handleEditImageUpload(event)">
+            <span id="edit-compress-status" class="compressing-status" style="display:none;">⏳ 正在智能壓縮圖片...</span>
+        </div>
+        
+        <div id="edit-img-path-wrapper" style="margin-top: 12px;">
+            <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">方式 B：手動修改相片路徑或網址</span>
+            <input type="text" id="edit-img-path" class="editing-input" placeholder="請輸入相片相對路徑或外部連結">
+        </div>
+
+                        <img id="edit-preview" class="upload-preview" oncontextmenu="return false;" ondragstart="return false;">
+
+                        <div style="margin-top: 20px; border-top:1px solid #eee; padding-top:15px; text-align:right; display:flex; justify-content:flex-end; gap:10px;">
+                            <button class="admin-btn" style="background:#9b9b9b;" onclick="toggleEditModal(false)">取消</button>
+                            <button class="admin-btn" style="background:#2c3e2f;" onclick="saveChangesFromServer()">💾 儲存更新</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="events-container" style="width: 100%;">
+                    <p style="text-align:center;">資料載入中...</p>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+    <footer id="global-footer" class="custom-footer"></footer>
+
+<script>
+    // ==========================================================================
+    // 【1. Supabase 連線與全域變數定義】
+    // ==========================================================================
+    window.supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+    window.supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+    window.TABLE_NAME = 'talks';            
+    window.STORAGE_BUCKET_NAME = 'talks';    
+    
+    window.client = supabase.createClient(window.supabaseUrl, window.supabaseKey);
+
+    let isAdmin = false;                    
+    let talksData = [];                     
+    let selectedCompressedFile = null;     
+    let selectedNewCompressedFile = null;  
+
+    // ==========================================================================
+    // 【2. 異步非同步載入頁首與頁尾】
+    // ==========================================================================
+    fetch('/header.html')
+        .then(response => response.text())
+        .then(data => {
+            const container = document.getElementById('header-container');
+            if (container) {
+                container.innerHTML = data;
+                setupHeaderMenu(); // 啟動選單與收納
+                syncAdminUI();     // 確保剛載入時鎖頭狀態正確
+            }
+        })
+        .catch(err => console.error("頁首載入失敗:", err));
+
+    fetch('/footer.html')
+        .then(response => response.text())
+        .then(data => {
+            const footerContainer = document.getElementById('global-footer');
+            if (footerContainer) {
+                footerContainer.innerHTML = data;
+                const yearSpan = document.getElementById('current-year');
+                if (yearSpan) yearSpan.textContent = new Date().getFullYear();
+            }
+        })
+        .catch(err => console.error("頁尾載入失敗:", err));
+
+    // ==========================================================================
+    // 【3. 全域 Supabase 認證狀態監聽】
+    // ==========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+        window.client.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                const { data: profile, error } = await window.client
+                    .from('profiles')
+                    .select('is_admin')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (!error && profile && profile.is_admin === true) {
+                    isAdmin = true;
+                    // 🟢 顯示後台控制按鈕
+                    const addBtn = document.getElementById('open-add-modal-btn');
+                    if (addBtn) addBtn.style.display = "inline-block"; 
+                } else {
+                    isAdmin = false;
+                    const addBtn = document.getElementById('open-add-modal-btn');
+                    if (addBtn) addBtn.style.display = "none";
+                }
+            } else {
+                isAdmin = false;
+                const addBtn = document.getElementById('open-add-modal-btn');
+                if (addBtn) addBtn.style.display = "none";
+            }
+            syncAdminUI(); // 每當狀態改變，重新整理鎖頭狀態
+            renderTalks(); 
+        });
+
+        fetchTalks(); 
+    });
+
+    // 🔄 專門負責更新 Header 狀態的 UI 函式（只切換 Class，外觀完全由 header 的 CSS 決定）
+    function syncAdminUI() {
+        if (!window.client || !window.client.auth) return;
+        
+        window.client.auth.getSession().then(({ data: { session } }) => {
+            const authBtn = document.getElementById('auth-btn');
+            if (!authBtn) return;
+
+            if (session && isAdmin) {
+                authBtn.classList.add('logged-in'); // 🟢 自動跟隨 header 的管理員樣式
+                authBtn.title = "管理員已登入 (點擊登出)";
+            } else {
+                authBtn.classList.remove('logged-in'); // 🔒 自動跟隨 header 的訪客樣式
+                authBtn.title = "管理員登入";
+            }
+        });
+    }
+
+    // ==========================================================================
+    // 【4. 全域綁定點擊事件（支援狀態自動同步與強制登出）】
+    // ==========================================================================
+    window.handleHeaderAuthAction = async function() {
+        if (window.client && typeof window.client.auth !== 'undefined') {
+            const { data: { session } } = await window.client.auth.getSession();
+            
+            if (session) {
+                if (confirm('確定要登出管理員模式嗎？')) {
+                    try {
+                        await window.client.auth.signOut();
+                    } catch (err) {
+                        console.error("Supabase 登出失敗", err);
+                    }
+
+                    // 強制清除憑證
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const key = localStorage.key(i);
+                        if (key && key.includes('supabase.auth.token')) {
+                            localStorage.removeItem(key);
+                        }
+                    }
+
+                    isAdmin = false;
+                    const addBtn = document.getElementById('open-add-modal-btn');
+                    if (addBtn) addBtn.style.display = "none";
+                    
+                    // 💡 立刻移除登入類別，畫面按鈕就會自動切換
+                    const authBtn = document.getElementById('auth-btn');
+                    if (authBtn) {
+                        authBtn.classList.remove('logged-in');
+                        authBtn.title = "管理員登入";
+                    }
+
+                    alert('已成功登出管理員模式');
+                    window.location.reload(true);
+                }
+            } else {
+                // 執行登入流程
+                const adminId = prompt("請輸入管理員 ID (例如: admin):");
+                const password = prompt("請輸入密碼:");
+                if (adminId && password) {
+                    const formattedEmail = `${adminId.trim()}@studio.local`;
+                    const { error } = await window.client.auth.signInWithPassword({ 
+                        email: formattedEmail, 
+                        password: password 
+                    });
+                    if (error) {
+                        alert("❌ 登入失敗：" + error.message);
+                    } else {
+                        alert("🟢 管理員登入成功！");
+                        window.location.reload(true);
+                    }
+                }
+            }
+        } else {
+            window.location.href = 'talks.html'; 
+        }
+    };
+
+    // ==========================================================================
+    // 【5. 資料庫讀取與活動渲染邏輯】
+    // ==========================================================================
+    async function fetchTalks() {
+        const { data, error } = await window.client
+            .from(window.TABLE_NAME)
+            .select('*')
+            .order('sort_order', { ascending: false }); 
+        
+        if (!error) {
+            talksData = data;
+            renderTalks(); 
+        } else {
+            console.error("資料讀取失敗:", error);
+        }
+    }
+
+    function renderTalks() {
+        const container = document.getElementById('events-container');
+        if (!container) return;
+        if (talksData.length === 0) {
+            container.innerHTML = "<p style='text-align:center;'>目前沒有談話資料</p>";
+            return;
+        }
+
+        let htmlString = "";
+        talksData.forEach((talk, index) => {
+            const currentOrder = talk.sort_order !== undefined && talk.sort_order !== null ? talk.sort_order : 0;
+
+            htmlString += `
+                <section class="wixui-section">
+                    <div class="event-block" id="block-${talk.id}">
+                        <div class="event-image">
+                            <img src="${talk.image_url}" alt="${talk.title}" oncontextmenu="return false;" ondragstart="return false;">
+                        </div>
+                        <div class="event-content">
+                            <h2>
+                                <span id="title-text-${talk.id}">${talk.title}</span>
+                                ${isAdmin ? `<span class="order-badge">排序值: ${currentOrder}</span>` : ''}
+                                ${isAdmin ? `<span class="edit-badge" onclick="openEditModalFromServer(${talk.id})">✏️ 快速修改</span>` : ''}
+                            </h2>
+                            <p id="desc-text-${talk.id}">
+                                ${talk.description ? talk.description.replace(/\n/g, '<br>') : ''}
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            `;
+            if (index < talksData.length - 1) {
+                htmlString += `<div class="event-separator"></div>`;
+            }
+        });
+        container.innerHTML = htmlString;
+    }
+
+    // ==========================================================================
+    // 【6. 新增與修改視窗控制】
+    // ==========================================================================
+    function openAddModalWithAutoOrder() {
+        let maxOrder = 0; 
+        if (talksData.length > 0) {
+            const orders = talksData.map(t => t.sort_order !== undefined && t.sort_order !== null ? t.sort_order : 0);
+            maxOrder = Math.max(...orders);
+        }
+        document.getElementById('new-sort').value = maxOrder + 1;
+        
+        // 重置新增彈窗內的欄位與預覽狀態
+        document.getElementById('new-title').value = '';
+        document.getElementById('new-desc').value = '';
+        document.getElementById('new-img-path').value = '';
+        const fileInput = document.getElementById('new-file'); // 假設您的 HTML 上傳 input ID 是這個
+        if (fileInput) fileInput.value = '';
+        selectedNewCompressedFile = null;
+        
+        const preview = document.getElementById('new-preview');
+        if (preview) preview.style.display = 'none';
+
+        toggleAddModal(true);
+    }
+
+    function toggleAddModal(show) {
+        const modal = document.getElementById('add-modal');
+        if (modal) {
+            if (show) modal.classList.add('show');
+            else modal.classList.remove('show');
+        }
+    }
+
+    function toggleEditModal(show) {
+        const modal = document.getElementById('edit-modal');
+        if (modal) {
+            if (show) modal.classList.add('show');
+            else modal.classList.remove('show');
+        }
+    }
+
+    function openEditModalFromServer(id) {
+        const talk = talksData.find(t => t.id === id);
+        if (!talk) return;
+
+        document.getElementById('edit-target-id').value = id;
+        document.getElementById('edit-title').value = talk.title;
+        document.getElementById('edit-sort').value = talk.sort_order !== undefined && talk.sort_order !== null ? talk.sort_order : 0;
+        document.getElementById('edit-desc').value = talk.description || '';
+        document.getElementById('edit-img-path').value = talk.image_url;
+        
+        const preview = document.getElementById('edit-preview');
+        if (preview) {
+            preview.src = talk.image_url;
+            preview.style.display = 'block';
+        }
+
+        const fileInput = document.getElementById('edit-file');
+        if (fileInput) fileInput.value = '';
+        selectedCompressedFile = null;
+
+        toggleEditModal(true);
+    }
+
+    async function createNewTalk() {
+        const title = document.getElementById('new-title').value.trim();
+        const desc = document.getElementById('new-desc').value.trim();
+        const sortVal = parseInt(document.getElementById('new-sort').value);
+        const pathInput = document.getElementById('new-img-path').value.trim();
+
+        if (isNaN(sortVal)) { alert('❌ 排序權重必須填入數字！'); return; }
+        if (!title) { alert('❌ 請輸入活動標題！'); return; }
+
+        let finalImageUrl = "";
+
+        // 🧠 核心邏輯調整：優先檢查是否有選擇實體檔案
+        if (selectedNewCompressedFile) {
+            const fileExt = selectedNewCompressedFile.name.split('.').pop() || 'jpg';
+            const fileName = `talk_new_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await window.client.storage
+                .from(window.STORAGE_BUCKET_NAME).upload(fileName, selectedNewCompressedFile, { cacheControl: '3600', upsert: true });
+
+            if (uploadError) { alert('相片上傳失敗：' + uploadError.message); return; }
+            const { data: { publicUrl } } = window.client.storage.from(window.STORAGE_BUCKET_NAME).getPublicUrl(fileName);
+            finalImageUrl = publicUrl;
+        } else {
+            // 如果沒選檔案，則直接抓取手動輸入的內容
+            if (!pathInput) { alert('❌ 請上傳相片或輸入相片路徑/GitHub 連結！'); return; }
+            finalImageUrl = pathInput;
+        }
+
+        const { error: insertError } = await window.client.from(window.TABLE_NAME).insert([
+            { title: title, description: desc, image_url: finalImageUrl, sort_order: sortVal }
+        ]);
+
+        if (!insertError) {
+            alert('🎉 全新談話活動資料已成功加入！');
+            toggleAddModal(false); 
+            fetchTalks();          
+        } else {
+            alert('❌ 寫入資料失敗：' + insertError.message);
+        }
+    }
+
+    async function saveChangesFromServer() {
+        const id = parseInt(document.getElementById('edit-target-id').value);
+        const newTitle = document.getElementById('edit-title').value.trim();
+        const newDesc = document.getElementById('edit-desc').value.trim();
+        const newSort = parseInt(document.getElementById('edit-sort').value);
+        const pathValue = document.getElementById('edit-img-path').value.trim();
+        
+        let finalImageUrl = talksData.find(t => t.id === id).image_url;
+
+        if (isNaN(newSort)) { alert('排序欄位必須填入數字！'); return; }
+        if (!newTitle) { alert('標題不能為空！'); return; }
+
+        // 🧠 核心邏輯調整：有選取新檔案就上傳，沒選就看手動輸入欄位是否有變更
+        if (selectedCompressedFile) {
+            const fileExt = selectedCompressedFile.name.split('.').pop() || 'jpg';
+            const fileName = `talk_${id}_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await window.client.storage
+                .from(window.STORAGE_BUCKET_NAME).upload(fileName, selectedCompressedFile, { cacheControl: '3600', upsert: true });
+
+            if (uploadError) { alert('相片上傳失敗: ' + uploadError.message); return; }
+            const { data: { publicUrl } } = window.client.storage.from(window.STORAGE_BUCKET_NAME).getPublicUrl(fileName);
+            finalImageUrl = publicUrl;
+        } else {
+            if (!pathValue) { alert('相片路徑不能為空！'); return; }
+            finalImageUrl = pathValue;
+        }
+
+        const { error } = await window.client
+            .from(window.TABLE_NAME)
+            .update({ title: newTitle, description: newDesc, image_url: finalImageUrl, sort_order: newSort })
+            .eq('id', id);
+
+        if (!error) {
+            alert('🎉 談話內容與排序已成功更新！');
+            toggleEditModal(false); 
+            fetchTalks(); 
+        } else {
+            alert('❌ 更新失敗：' + error.message);
+        }
+    }
+
+    // ==========================================================================
+    // 【7. Header 智慧導覽選單演算法】
+    // ==========================================================================
+    function setupHeaderMenu() {
+        const toggleButton = document.querySelector('.menu-toggle');
+        const navLinks = document.querySelector('.header-nav-links');
+
+        if (toggleButton && navLinks) {
+            toggleButton.onclick = function(e) {
+                navLinks.classList.toggle('active');
+                e.stopPropagation();
+            };
+
+            document.onclick = function(e) {
+                if (navLinks.classList.contains('active') && !navLinks.contains(e.target) && e.target !== toggleButton) {
+                    navLinks.classList.remove('active');
+                }
+            };
+        }
+
+        const mainNav = document.querySelector('.header-nav-links'); 
+        if (!mainNav) return;
+
+        let moreMenu = document.getElementById('more-menu');
+        let overflowLinks = document.getElementById('overflow-links');
+        
+        if (!moreMenu) {
+            moreMenu = document.createElement('div');
+            moreMenu.id = 'more-menu';
+            moreMenu.className = 'more-dropdown';
+            moreMenu.innerHTML = `
+                <a href="#" class="more-toggle" onclick="return false;">更多 ▾</a>
+                <div class="more-dropdown-content" id="overflow-links"></div>
+            `;
+            mainNav.appendChild(moreMenu);
+            overflowLinks = document.getElementById('overflow-links');
+        }
+
+        const allLinks = Array.from(mainNav.children).filter(el => el !== moreMenu && el.tagName === 'A');
+        const searchBtn = mainNav.querySelector('.search-icon-btn');
+
+        function adjustNavItems() {
+            if (window.innerWidth <= 768) {
+                allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
+                if (searchBtn) mainNav.appendChild(searchBtn);
+                moreMenu.style.display = 'none';
+                return;
+            }
+
+            moreMenu.style.display = 'none'; 
+            overflowLinks.innerHTML = '';    
+            allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
+            if (searchBtn) mainNav.appendChild(searchBtn);
+
+            let navContainerWidth = mainNav.offsetWidth;
+            let totalWidth = 0;
+            let isOverflow = false;
+            
+            const moreBtnWidth = 90; 
+            const searchBtnWidth = searchBtn ? (searchBtn.offsetWidth || 50) : 50;
+
+            for (let i = 0; i < allLinks.length; i++) {
+                const item = allLinks[i];
+                if (isOverflow) {
+                    overflowLinks.appendChild(item);
+                    continue;
+                }
+
+                const itemStyle = window.getComputedStyle(item);
+                const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
+                const marginRight = parseFloat(itemStyle.marginRight) || 0;
+                totalWidth += item.offsetWidth + marginLeft + marginRight;
+
+                if (totalWidth + moreBtnWidth + searchBtnWidth > navContainerWidth) {
+                    isOverflow = true;
+                    moreMenu.style.display = 'inline-block';
+                    overflowLinks.appendChild(item);
+                }
+            }
+        }
+
+        adjustNavItems();
+        window.removeEventListener('resize', adjustNavItems);
+        window.addEventListener('resize', adjustNavItems);
+    }
+</script>
+</body>
+</html>
