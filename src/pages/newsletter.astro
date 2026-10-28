@@ -435,8 +435,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             .expandable-search-wrapper.open { width: 160px; } /* 手機端展開窄一點避免擠壓 */
         }
     </style>
-</head>
-<body>
+
 
 <div id="header-container"></div>
 
@@ -1351,44 +1350,7 @@ function renderPosts() {
     }
 }
 
-function loadHeaderAndFooter() {
-    fetch('header.html')
-        .then(response => response.text())
-        .then(data => {
-            const container = document.getElementById('header-container');
-            if(container) {
-                container.innerHTML = data;
-                setupHeaderMenu();
-            }
-        });
 
-    fetch('footer.html')
-        .then(response => response.text())
-        .then(data => {
-            const footerContainer = document.getElementById('global-footer');
-            if(footerContainer) {
-                footerContainer.innerHTML = data;
-                const yearSpan = document.getElementById('current-year');
-                if (yearSpan) yearSpan.textContent = new Date().getFullYear();
-            }
-        });
-}
-
-function setupHeaderMenu() {
-    const toggleButton = document.querySelector('.menu-toggle');
-    const navLinks = document.querySelector('.nav-links');
-    if (toggleButton && navLinks) {
-        toggleButton.addEventListener('click', (e) => {
-            navLinks.classList.toggle('active');
-            e.stopPropagation();
-        });
-        document.addEventListener('click', (e) => {
-            if (navLinks.classList.contains('active') && !navLinks.contains(e.target) && e.target !== toggleButton) {
-                navLinks.classList.remove('active');
-            }
-        });
-    }
-}
 
 function exportToExcel() {
     if (!posts || posts.length === 0) {
