@@ -1,15 +1,8 @@
 ---
 import Layout from '../../layouts/BaseLayout.astro';
----
-<BaseLayout>
-<title>客舍讀書會 Slow Pace Reading Clubs</title>
-
-
-const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
-const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-const tableName = 'reading_clubs';
 
 export const prerender = true;
+
 // 1. 🌟 告訴 Astro 要為哪些「書名 (Title)」編譯成獨立 HTML 分頁
 export async function getStaticPaths() {
   const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
@@ -29,8 +22,6 @@ export async function getStaticPaths() {
   // 為每一筆資料分配路由與傳遞相應資料
   return clubs.map((club, index) => {
     return {
-      // 🌟 關鍵改動：網址參數從 club.id 改成 club.title
-      // encodeURIComponent 可以安全地把中文變成網址格式
       params: { title: club.title ? club.title.toString() : `club-${index}` },
       props: { 
         club, 
@@ -47,6 +38,10 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
 ---
 
 <Layout>
+  <Fragment slot="head">
+    <title>客舍讀書會 Slow Pace Reading Clubs - {club.title || '詳細內容'}</title>
+  </Fragment>
+
   <div id="header-container"></div>    
 
   <main class="main-container">
@@ -79,7 +74,6 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
 <script is:inline define:vars={{ allClubs, currentIndex, club }} >
   window.globalClubsData = allClubs;
   
-  // 🌟 關鍵改動：比對條件從 id 改成 title，防範重新整理時索引跑掉
   const realIndex = allClubs.findIndex(item => item.title === club.title);
   window.currentActiveIndex = realIndex !== -1 ? realIndex : currentIndex;
 </script>
@@ -89,16 +83,16 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
   let touchEndX = 0;
 
   document.addEventListener("DOMContentLoaded", () => {
-    loadExternalHeader();
-    loadExternalFooter();
+    if (typeof loadExternalHeader === 'function') loadExternalHeader();
+    if (typeof loadExternalFooter === 'function') loadExternalFooter();
     setupTouchListeners();
     
-    document.getElementById('prevClubBtn').onclick = () => navigateClub(-1);
-    document.getElementById('nextClubBtn').onclick = () => navigateClub(1);
+    const prevBtn = document.getElementById('prevClubBtn');
+    const nextBtn = document.getElementById('nextClubBtn');
+    if (prevBtn) prevBtn.onclick = () => navigateClub(-1);
+    if (nextBtn) nextBtn.onclick = () => navigateClub(1);
   });
 
-
-  // 🌟 關鍵改動：跳轉網址改用 targetClub.title
   function navigateClub(direction) {
     let newIndex = window.currentActiveIndex + direction;
     if (newIndex < 0) newIndex = window.globalClubsData.length - 1;
@@ -106,18 +100,17 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
     
     const targetClub = window.globalClubsData[newIndex];
     if (targetClub && targetClub.title) {
-      // 將網址改成中文書名
       window.location.href = `/clubs/${encodeURIComponent(targetClub.title)}/`;
     }
   }
 
-  // 手勢滑動
   function setupTouchListeners() {
     const area = document.getElementById('detailViewArea');
     if (!area) return;
     area.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
     area.addEventListener('touchend', (e) => { touchEndX = e.changedTouches[0].screenX; handleSwipeGesture(); }, { passive: true });
   }
+  
   function handleSwipeGesture() {
     const threshold = 60;
     if (touchStartX - touchEndX > threshold) navigateClub(1);
@@ -126,7 +119,6 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
 </script>
 
 <style>
-  /* 以下 CSS 保持完全不變 */
   *, *::before, *::after { box-sizing: border-box; }
   body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; font-size: 10px; background-color: #70b39b; }
   .main-container { line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
@@ -146,5 +138,3 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
   .nav-btn:hover { background: #33251b; }
   @media (max-width: 600px) { .detail-layout { flex-direction: column; gap: 20px; } .detail-left-col { flex: none; width: 100%; max-width: 340px; margin: 0 auto; } .detail-view-container { padding: 20px; } }
 </style>
-
-</BaseLayout>
