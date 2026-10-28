@@ -468,31 +468,7 @@ width: 100%;}
         }
     }
 
-    // 📦 3. 非同步載入外部 header.html
-    async function loadExternalHeader() {
-        try {
-            const response = await fetch('/header.html');
-            if (!response.ok) throw new Error('無法尋找到外部 header.html 檔案');
-            
-            const htmlText = await response.text();
-            document.getElementById('header-placeholder').innerHTML = htmlText;
-            
-            // A. 幫外部 header.html 的 auth-btn 綁定點擊事件
-            const headerAuthBtn = document.getElementById('auth-btn');
-            if (headerAuthBtn) headerAuthBtn.addEventListener('click', handleHeaderAuthAction);
-            
-            // B. 幫主視覺裡的 secretAdminLogo 綁定完全一樣的點擊事件
-            const secretAdminLogo = document.getElementById('secretAdminLogo');
-            if (secretAdminLogo) secretAdminLogo.addEventListener('click', handleHeaderAuthAction);
-            
-            // 🌟【關鍵修正點】Header 的 HTML 渲染完成了，現在馬上綁定手機版選單演算法！
-            setupHeaderMenu();
-            
-            await syncAdminUI();
-        } catch (err) {
-            console.error('載入外部 Header 失敗:', err);
-        }
-    }
+    
 
     // 💡 圖片自動壓縮上傳組件
     async function uploadAndCompressFile(file, statusEl) {
