@@ -1,0 +1,315 @@
+---
+// 💡 因為部署到 GitHub Pages（靜態環境），移除所有伺服器端的 POST、Cookie 與 process.env 邏輯
+// 這裡保留你原本的資料匯入（如果後續需要用到前端的話）
+import { internData } from '../data/interns';
+---
+
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>客舍實習生手帳 ｜ 雲端同步活動時間表</title>
+    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      :root {
+        --bg-cream: #fbf9f4;       
+        --text-main: #3d4035;      
+        --text-muted: #7a7e6b;    
+        --sage-green: #6b7a67;    
+        --sage-light: #f0f3ee;    
+        --clay-orange: #c88a75;   
+        --border-color: #e6e3da;  
+        --grid-border: #cccccc; 
+        --holiday-red: #d9534f;
+        --font-serif: "Noto Serif TC", "Georgia", serif;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background-color: var(--bg-cream); color: var(--text-main); font-family: system-ui, -apple-system, sans-serif; padding: 40px 20px; }
+      
+      /* 💡 初始隱藏，避免因讀取 localStorage 造成的畫面閃爍 */
+      .auth-section, .app-section { display: none; }
+
+      .login-container { max-width: 400px; margin: 100px auto; background: white; padding: 40px 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid var(--border-color); text-align: center; }
+      .login-container h2 { font-family: var(--font-serif); margin-bottom: 20px; font-size: 1.4rem; }
+      .login-container input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-cream); outline: none; text-align: center; font-size: 1rem; }
+      .login-container button { width: 100%; padding: 12px; background: var(--sage-green); color: white; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+      
+      header { text-align: center; margin-bottom: 40px; position: relative; }
+      header h1 { font-family: var(--font-serif); font-size: 2.2rem; font-weight: 500; letter-spacing: 2px; margin-bottom: 10px; }
+      header p { color: var(--text-muted); font-size: 0.95rem; }
+      .btn-logout { position: absolute; right: 10px; top: 10px; background: transparent; border: 1px solid var(--clay-orange); color: var(--clay-orange); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+
+      .main-container { max-width: 1500px; margin: 0 auto; }
+
+      .month-switcher-header { display: flex; align-items: center; justify-content: center; gap: 30px; margin-bottom: 30px; }
+      .current-month-display { font-family: var(--font-serif); font-size: 2rem; font-weight: 500; min-width: 240px; text-align: center; }
+      .switch-btn { background: white; border: 1px solid var(--border-color); color: var(--text-main); font-size: 1.5rem; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02); line-height: 1; }
+      .switch-btn:hover { background: var(--sage-light); color: var(--sage-green); border-color: var(--sage-green); }
+
+      .calendar-section { background: white; padding: 30px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 4px 24px rgba(61,64,53,0.03); }
+
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--grid-border) !important; border-left: 1px solid var(--grid-border) !important; background: white; }
+      .calendar-header { font-size: 0.95rem; color: var(--text-muted); text-align: center; padding: 15px 0; font-weight: 600; background: #faf8f5; border-right: 1px solid var(--grid-border) !important; border-bottom: 1px solid var(--grid-border) !important; }
+      
+      .calendar-day { background: white !important; border-right: 1px solid var(--grid-border) !important; border-bottom: 1px solid var(--grid-border) !important; min-height: 180px !important; height: auto !important; padding: 12px; display: flex; flex-direction: column; gap: 6px; transition: all 0.2s ease; cursor: pointer; }
+      .calendar-day:hover { background: #fdfcf9 !important; box-shadow: inset 0 0 0 2px var(--sage-green); }
+      .calendar-day.empty { background: var(--bg-cream) !important; opacity: 0.6; pointer-events: none; }
+      
+      .day-number { font-size: 1.4rem !important; font-weight: 700; color: var(--text-main); margin-bottom: 6px; line-height: 1; text-align: left; }
+      .calendar-day.is-holiday { background-color: #fffaf9 !important; }
+      .calendar-day.is-holiday .day-number { color: var(--holiday-red); }
+
+      .activity-item { padding: 6px 8px; border-radius: 4px; border-left: 3px solid var(--sage-green); background-color: var(--sage-light); text-align: left; }
+      .act-time { font-size: 0.75rem; font-weight: 700; display: block; margin-bottom: 2px; opacity: 0.85; }
+      .act-title { font-size: 0.82rem; font-weight: 600; word-break: break-all; line-height: 1.2; }
+
+      .loading-status { text-align: center; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px; font-style: italic; }
+
+      @media (max-width: 768px) {
+        .calendar-grid { grid-template-columns: repeat(7, 1fr); }
+        .calendar-day { min-height: 120px !important; padding: 6px; }
+        .day-number { font-size: 1.1rem !important; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="auth-block" class="auth-section">
+      <div class="login-container">
+        <h2>登入實習生雲端手帳</h2>
+        <div id="login-form">
+          <input type="password" id="login-password" placeholder="請輸入密碼" required />
+          <button type="button" id="btn-login">確認進入</button>
+        </div>
+        <p id="login-error" style="color: var(--holiday-red); margin-top: 15px; font-size: 0.9rem; display: none;">❌ 密碼錯誤，請再試一次。</p>
+      </div>
+    </div>
+
+    <div id="app-block" class="app-section">
+      <header>
+        <h1>客舍實習生活動手帳</h1>
+        <p>☁️ 大月曆看板 ｜ 點擊任何日子可於新分頁查看/管理當日詳情</p>
+        <button type="button" id="btn-logout" class="btn-logout">登出系統</button>
+      </header>
+
+      <div class="main-container">
+        <div class="month-switcher-header">
+          <button id="btn-prev-month" class="switch-btn">‹</button>
+          <h2 id="calendar-title" class="current-month-display">載入中...</h2>
+          <button id="btn-next-month" class="switch-btn">›</button>
+        </div>
+
+        <section class="calendar-section">
+          <div id="loading-text" class="loading-status">正在連線至 Supabase 雲端手帳...</div>
+          
+          <div class="calendar-grid">
+            <div class="calendar-header">日</div>
+            <div class="calendar-header">一</div>
+            <div class="calendar-header">二</div>
+            <div class="calendar-header">三</div>
+            <div class="calendar-header">四</div>
+            <div class="calendar-header">五</div>
+            <div class="calendar-header">六</div>
+          </div>
+
+          <div id="calendar-days" class="calendar-grid"></div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+      const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+      const TABLE_NAME = 'activities'; 
+
+      const holidays = ["2026-01-01", "2026-02-17", "2026-02-18", "2026-02-19", "2026-04-03", "2026-04-04", "2026-04-06", "2026-04-07", "2026-05-01", "2026-05-25", "2026-06-19", "2026-07-01", "2026-09-26", "2026-10-01", "2026-10-19", "2026-12-25", "2026-12-26"];
+
+      const internColors = {
+        "小明": { bg: "#e9f5ec", border: "#6b7a67", text: "#3d4035" },
+        "小華": { bg: "#fdf2ec", border: "#c88a75", text: "#5c3d33" },
+        "阿桃": { bg: "#f5f0f6", border: "#9b8da3", text: "#4a3e50" },
+        "君君": { bg: "#edf4f9", border: "#7590a8", text: "#314352" },
+        "美美": { bg: "#fbf3e6", border: "#d4a359", text: "#594221" }
+      };
+
+      let currentYear = 2026;
+      let currentMonthNum = 7; 
+      let rawActivities = []; 
+      let supabaseClient;
+
+      // 取得 DOM 元素
+      const authBlock = document.getElementById('auth-block');
+      const appBlock = document.getElementById('app-block');
+      const loginPasswordInput = document.getElementById('login-password') as HTMLInputElement;
+      const btnLogin = document.getElementById('btn-login');
+      const loginError = document.getElementById('login-error');
+      const btnLogout = document.getElementById('btn-logout');
+      
+      const calendarDays = document.getElementById('calendar-days');
+      const calendarTitle = document.getElementById('calendar-title');
+      const loadingText = document.getElementById('loading-text');
+      const btnPrev = document.getElementById('btn-prev-month');
+      const btnNext = document.getElementById('btn-next-month');
+
+      function initSupabase() {
+        if ((window as any).supabase) {
+          supabaseClient = (window as any).supabase.createClient(supabaseUrl, supabaseKey);
+          return true;
+        }
+        return false;
+      }
+
+      function checkAuth() {
+        const isAuth = localStorage.getItem('site_authenticated');
+        if (isAuth === 'true') {
+          if (authBlock) authBlock.style.display = 'none';
+          if (appBlock) appBlock.style.display = 'block';
+          fetchData();
+        } else {
+          if (authBlock) authBlock.style.display = 'block';
+          if (appBlock) appBlock.style.display = 'none';
+        }
+      }
+
+      // 💡 調用上一步在 Supabase SQL Editor 建立的安全 RPC 驗證函式
+      async function handleLogin() {
+        if (!loginPasswordInput) return;
+        const inputPassword = loginPasswordInput.value.trim();
+        if (!inputPassword) return;
+
+        if (!supabaseClient && !initSupabase()) return;
+
+        try {
+          // 呼叫 RPC，將密碼丟給資料庫後端去比對，只拿回 true/false
+          const { data: isCorrect, error } = await supabaseClient.rpc('verify_site_password', {
+            input_password: inputPassword
+          });
+
+          if (error) {
+            console.error("驗證發生錯誤：", error);
+            alert("系統連線錯誤，請稍後再試。");
+            return;
+          }
+
+          if (isCorrect === true) {
+            localStorage.setItem('site_authenticated', 'true');
+            if (loginError) loginError.style.display = 'none';
+            checkAuth();
+          } else {
+            if (loginError) loginError.style.display = 'block';
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      function handleLogout() {
+        localStorage.removeItem('site_authenticated');
+        if (loginPasswordInput) loginPasswordInput.value = '';
+        checkAuth();
+      }
+
+      async function fetchData() {
+        if (!calendarDays) return; 
+        if (!supabaseClient && !initSupabase()) return;
+        
+        if (loadingText) loadingText.style.display = 'block';
+        try {
+          const { data, error } = await supabaseClient.from(TABLE_NAME).select('*');
+          if (!error && data) {
+            rawActivities = data;
+            if (loadingText) loadingText.style.display = 'none';
+            renderCalendar();
+          }
+        } catch (e) { console.error(e); }
+      }
+
+      function renderCalendar() {
+        if (!calendarDays || !calendarTitle) return;
+        calendarDays.innerHTML = '';
+        calendarTitle.innerText = `${currentYear} 年 ${currentMonthNum} 月`;
+
+        const startWeekDay = new Date(currentYear, currentMonthNum - 1, 1).getDay();
+        const totalDays = new Date(currentYear, currentMonthNum, 0).getDate();
+
+        for (let i = 0; i < startWeekDay; i++) {
+          const emptyCell = document.createElement('div');
+          emptyCell.className = 'calendar-day empty';
+          calendarDays.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= totalDays; day++) {
+          const dateStr = `${currentYear}-${String(currentMonthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const isHoliday = holidays.includes(dateStr);
+
+          const dayCell = document.createElement('div');
+          dayCell.className = `calendar-day ${isHoliday ? 'is-holiday' : ''}`;
+          
+          dayCell.addEventListener('click', () => {
+            // 💡 提醒：在 GitHub Pages 上點擊單日，若有單日詳細頁，需要注意相對路徑（例如改為 /day.html?date=... 或符合你的 Astro 路由規劃）
+            window.open(`/day/${dateStr}`, '_blank');
+          });
+
+          const numLabel = document.createElement('div');
+          numLabel.className = 'day-number';
+          numLabel.innerText = `${day}`;
+          dayCell.appendChild(numLabel);
+
+          const dayActs = rawActivities.filter(act => act.date === dateStr);
+          dayActs.sort((a, b) => (a.time_start || '').localeCompare(b.time_start || ''));
+          
+          dayActs.forEach(act => {
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            
+            const internName = act.intern ? act.intern.trim() : "";
+            if (internColors[internName]) {
+              item.style.backgroundColor = internColors[internName].bg;
+              item.style.borderColor = internColors[internName].border;
+              item.style.color = internColors[internName].text;
+            } else {
+              item.style.backgroundColor = "#f4f4f2";
+              item.style.borderColor = "#bcbcba";
+              item.style.color = "#555553";
+            }
+
+            item.innerHTML = `
+              <span class="act-time">${act.time_start || ''}</span>
+              <div class="act-title">${act.name || '未命名活動'}</div>
+            `;
+            dayCell.appendChild(item);
+          });
+
+          calendarDays.appendChild(dayCell);
+        }
+      }
+
+      // 事件監聽
+      if (btnPrev && btnNext) {
+        btnPrev.addEventListener('click', () => {
+          currentMonthNum--;
+          if (currentMonthNum < 1) { currentMonthNum = 12; currentYear--; }
+          renderCalendar();
+        });
+        btnNext.addEventListener('click', () => {
+          currentMonthNum++;
+          if (currentMonthNum > 12) { currentMonthNum = 1; currentYear++; }
+          renderCalendar();
+        });
+      }
+
+      if (btnLogin) btnLogin.addEventListener('click', handleLogin);
+      if (loginPasswordInput) {
+        loginPasswordInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') handleLogin();
+        });
+      }
+      if (btnLogout) btnLogout.addEventListener('click', handleLogout);
+
+      // 啟動與初始化檢查
+      initSupabase();
+      checkAuth();
+    </script>
+  </body>
+</html>
