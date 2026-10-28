@@ -188,7 +188,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </style>
 
 
-<div id="header-container"></div>    
+
 
 
 <div id="SITE_CONTAINER">
@@ -303,7 +303,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
 </div>
 
-    <footer id="global-footer" class="custom-footer"></footer>
+
 
 <script>
     // ==========================================================================
@@ -321,32 +321,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     let selectedCompressedFile = null;     
     let selectedNewCompressedFile = null;  
 
-    // ==========================================================================
-    // 【2. 異步非同步載入頁首與頁尾】
-    // ==========================================================================
-    fetch('/header.html')
-        .then(response => response.text())
-        .then(data => {
-            const container = document.getElementById('header-container');
-            if (container) {
-                container.innerHTML = data;
-                setupHeaderMenu(); // 啟動選單與收納
-                syncAdminUI();     // 確保剛載入時鎖頭狀態正確
-            }
-        })
-        .catch(err => console.error("頁首載入失敗:", err));
-
-    fetch('/footer.html')
-        .then(response => response.text())
-        .then(data => {
-            const footerContainer = document.getElementById('global-footer');
-            if (footerContainer) {
-                footerContainer.innerHTML = data;
-                const yearSpan = document.getElementById('current-year');
-                if (yearSpan) yearSpan.textContent = new Date().getFullYear();
-            }
-        })
-        .catch(err => console.error("頁尾載入失敗:", err));
 
     // ==========================================================================
     // 【3. 全域 Supabase 認證狀態監聽】
@@ -381,84 +355,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
         fetchTalks(); 
     });
-
-    // 🔄 專門負責更新 Header 狀態的 UI 函式（只切換 Class，外觀完全由 header 的 CSS 決定）
-    function syncAdminUI() {
-        if (!window.client || !window.client.auth) return;
-        
-        window.client.auth.getSession().then(({ data: { session } }) => {
-            const authBtn = document.getElementById('auth-btn');
-            if (!authBtn) return;
-
-            if (session && isAdmin) {
-                authBtn.classList.add('logged-in'); // 🟢 自動跟隨 header 的管理員樣式
-                authBtn.title = "管理員已登入 (點擊登出)";
-            } else {
-                authBtn.classList.remove('logged-in'); // 🔒 自動跟隨 header 的訪客樣式
-                authBtn.title = "管理員登入";
-            }
-        });
-    }
-
-    // ==========================================================================
-    // 【4. 全域綁定點擊事件（支援狀態自動同步與強制登出）】
-    // ==========================================================================
-    window.handleHeaderAuthAction = async function() {
-        if (window.client && typeof window.client.auth !== 'undefined') {
-            const { data: { session } } = await window.client.auth.getSession();
-            
-            if (session) {
-                if (confirm('確定要登出管理員模式嗎？')) {
-                    try {
-                        await window.client.auth.signOut();
-                    } catch (err) {
-                        console.error("Supabase 登出失敗", err);
-                    }
-
-                    // 強制清除憑證
-                    for (let i = localStorage.length - 1; i >= 0; i--) {
-                        const key = localStorage.key(i);
-                        if (key && key.includes('supabase.auth.token')) {
-                            localStorage.removeItem(key);
-                        }
-                    }
-
-                    isAdmin = false;
-                    const addBtn = document.getElementById('open-add-modal-btn');
-                    if (addBtn) addBtn.style.display = "none";
-                    
-                    // 💡 立刻移除登入類別，畫面按鈕就會自動切換
-                    const authBtn = document.getElementById('auth-btn');
-                    if (authBtn) {
-                        authBtn.classList.remove('logged-in');
-                        authBtn.title = "管理員登入";
-                    }
-
-                    alert('已成功登出管理員模式');
-                    window.location.reload(true);
-                }
-            } else {
-                // 執行登入流程
-                const adminId = prompt("請輸入管理員 ID (例如: admin):");
-                const password = prompt("請輸入密碼:");
-                if (adminId && password) {
-                    const formattedEmail = `${adminId.trim()}@studio.local`;
-                    const { error } = await window.client.auth.signInWithPassword({ 
-                        email: formattedEmail, 
-                        password: password 
-                    });
-                    if (error) {
-                        alert("❌ 登入失敗：" + error.message);
-                    } else {
-                        alert("🟢 管理員登入成功！");
-                        window.location.reload(true);
-                    }
-                }
-            }
-        } else {
-            window.location.href = 'talks.html'; 
-        }
-    };
 
     // ==========================================================================
     // 【5. 資料庫讀取與活動渲染邏輯】
@@ -660,90 +556,5 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         }
     }
 
-    // ==========================================================================
-    // 【7. Header 智慧導覽選單演算法】
-    // ==========================================================================
-    function setupHeaderMenu() {
-        const toggleButton = document.querySelector('.menu-toggle');
-        const navLinks = document.querySelector('.header-nav-links');
-
-        if (toggleButton && navLinks) {
-            toggleButton.onclick = function(e) {
-                navLinks.classList.toggle('active');
-                e.stopPropagation();
-            };
-
-            document.onclick = function(e) {
-                if (navLinks.classList.contains('active') && !navLinks.contains(e.target) && e.target !== toggleButton) {
-                    navLinks.classList.remove('active');
-                }
-            };
-        }
-
-        const mainNav = document.querySelector('.header-nav-links'); 
-        if (!mainNav) return;
-
-        let moreMenu = document.getElementById('more-menu');
-        let overflowLinks = document.getElementById('overflow-links');
-        
-        if (!moreMenu) {
-            moreMenu = document.createElement('div');
-            moreMenu.id = 'more-menu';
-            moreMenu.className = 'more-dropdown';
-            moreMenu.innerHTML = `
-                <a href="#" class="more-toggle" onclick="return false;">更多 ▾</a>
-                <div class="more-dropdown-content" id="overflow-links"></div>
-            `;
-            mainNav.appendChild(moreMenu);
-            overflowLinks = document.getElementById('overflow-links');
-        }
-
-        const allLinks = Array.from(mainNav.children).filter(el => el !== moreMenu && el.tagName === 'A');
-        const searchBtn = mainNav.querySelector('.search-icon-btn');
-
-        function adjustNavItems() {
-            if (window.innerWidth <= 768) {
-                allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
-                if (searchBtn) mainNav.appendChild(searchBtn);
-                moreMenu.style.display = 'none';
-                return;
-            }
-
-            moreMenu.style.display = 'none'; 
-            overflowLinks.innerHTML = '';    
-            allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
-            if (searchBtn) mainNav.appendChild(searchBtn);
-
-            let navContainerWidth = mainNav.offsetWidth;
-            let totalWidth = 0;
-            let isOverflow = false;
-            
-            const moreBtnWidth = 90; 
-            const searchBtnWidth = searchBtn ? (searchBtn.offsetWidth || 50) : 50;
-
-            for (let i = 0; i < allLinks.length; i++) {
-                const item = allLinks[i];
-                if (isOverflow) {
-                    overflowLinks.appendChild(item);
-                    continue;
-                }
-
-                const itemStyle = window.getComputedStyle(item);
-                const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
-                const marginRight = parseFloat(itemStyle.marginRight) || 0;
-                totalWidth += item.offsetWidth + marginLeft + marginRight;
-
-                if (totalWidth + moreBtnWidth + searchBtnWidth > navContainerWidth) {
-                    isOverflow = true;
-                    moreMenu.style.display = 'inline-block';
-                    overflowLinks.appendChild(item);
-                }
-            }
-        }
-
-        adjustNavItems();
-        window.removeEventListener('resize', adjustNavItems);
-        window.addEventListener('resize', adjustNavItems);
-    }
 </script>
 </BaseLayout>
