@@ -1,6 +1,9 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
+---
+// 匯入 Layout
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout>
+    <Fragment slot="head"></Fragment>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -11,6 +14,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
+    </Fragment>
 
     <style>
         /* ==========================================================================
@@ -182,8 +186,7 @@
             .event-image img { width: 100%; max-width: 350px; }
         }
     </style>
-</head>
-<body>
+
 
 <div id="header-container"></div>    
 
@@ -743,5 +746,4 @@
         window.addEventListener('resize', adjustNavItems);
     }
 </script>
-</body>
-</html>
+</BaseLayout>

@@ -1,6 +1,9 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
+---
+// 匯入 Layout
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout>
+    <Fragment slot="head"></Fragment>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -8,7 +11,8 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
-    
+    </Fragment>
+
     <style>
         /* ==========================================================================
            【1. 全域重設與網頁基礎底色 (Global Reset & Base)】
@@ -289,8 +293,7 @@ width: 100%;}
 
         }
     </style>
-</head>
-<body>
+
 
     <div id="header-placeholder"></div>
 
@@ -770,109 +773,6 @@ width: 100%;}
         window.fetchAndRenderChapters(); 
     });
 
-    // ==========================================================================
-    // 【7. Header 智慧導覽選單演算法】（現已被 loadExternalHeader 正確呼叫）
-    // ==========================================================================
-    function setupHeaderMenu() {
-        const toggleButton = document.querySelector('.menu-toggle');
-        const navLinks = document.querySelector('.header-nav-links');
-
-        if (toggleButton && navLinks) {
-            // 先清除舊的事件（防止重複綁定），再重新綁定
-            toggleButton.onclick = null;
-            toggleButton.onclick = function(e) {
-                navLinks.classList.toggle('active');
-                e.stopPropagation();
-            };
-
-            document.onclick = function(e) {
-                if (navLinks.classList.contains('active') && !navLinks.contains(e.target) && e.target !== toggleButton) {
-                    navLinks.classList.remove('active');
-                }
-            };
-        }
-
-        const mainNav = document.querySelector('.header-nav-links'); 
-        if (!mainNav) return;
-
-        let moreMenu = document.getElementById('more-menu');
-        let overflowLinks = document.getElementById('overflow-links');
-        
-        if (!moreMenu) {
-            moreMenu = document.createElement('div');
-            moreMenu.id = 'more-menu';
-            moreMenu.className = 'more-dropdown';
-            moreMenu.innerHTML = `
-                <a href="#" class="more-toggle" onclick="return false;">更多 ▾</a>
-                <div class="more-dropdown-content" id="overflow-links"></div>
-            `;
-            mainNav.appendChild(moreMenu);
-            overflowLinks = document.getElementById('overflow-links');
-        }
-
-        const allLinks = Array.from(mainNav.children).filter(el => el !== moreMenu && el.tagName === 'A');
-        const searchBtn = mainNav.querySelector('.search-icon-btn');
-
-        function adjustNavItems() {
-            if (window.innerWidth <= 768) {
-                allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
-                if (searchBtn) mainNav.appendChild(searchBtn);
-                moreMenu.style.display = 'none';
-                return;
-            }
-
-            moreMenu.style.display = 'none'; 
-            overflowLinks.innerHTML = '';    
-            allLinks.forEach(item => mainNav.insertBefore(item, moreMenu));
-            if (searchBtn) mainNav.appendChild(searchBtn);
-
-            let navContainerWidth = mainNav.offsetWidth;
-            let totalWidth = 0;
-            let isOverflow = false;
-            
-            const moreBtnWidth = 90; 
-            const searchBtnWidth = searchBtn ? (searchBtn.offsetWidth || 50) : 50;
-
-            for (let i = 0; i < allLinks.length; i++) {
-                const item = allLinks[i];
-                if (isOverflow) {
-                    overflowLinks.appendChild(item);
-                    continue;
-                }
-
-                const itemStyle = window.getComputedStyle(item);
-                const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
-                const marginRight = parseFloat(itemStyle.marginRight) || 0;
-                totalWidth += item.offsetWidth + marginLeft + marginRight;
-
-                if (totalWidth + moreBtnWidth + searchBtnWidth > navContainerWidth) {
-                    isOverflow = true;
-                    moreMenu.style.display = 'inline-block';
-                    overflowLinks.appendChild(item);
-                }
-            }
-        }
-
-        adjustNavItems();
-        window.removeEventListener('resize', adjustNavItems);
-        window.addEventListener('resize', adjustNavItems);
-    }
-
-    // ==========================================
-    // 載入頁尾並處理年份
-    // ==========================================
-    fetch('/footer.html')
-    .then(response => response.text())
-    .then(data => {
-        const footerContainer = document.getElementById('global-footer');
-        if (footerContainer) {
-            footerContainer.innerHTML = data;
-            const yearSpan = document.getElementById('current-year');
-            if (yearSpan) { yearSpan.textContent = new Date().getFullYear(); }
-        }
-    })
-    .catch(err => console.error("頁尾載入失敗:", err));
 
 </script>
-</body>
-</html>
+</BaseLayout>
