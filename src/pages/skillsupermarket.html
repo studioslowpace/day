@@ -1,12 +1,16 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
+---
+// 匯入 Layout
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout>
+    <Fragment slot="head">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>客舍萬事屋 Slow Pace Skill Supermarker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    </Fragment>
     
 <style>
         /* ==========================================
@@ -905,10 +909,9 @@ textarea::placeholder {
 }
 
     </style>
-</head>
-<body>
 
-      <div id="header-container"></div>    
+
+
 
     <div id="toast-message" class="hidden toast-notification">
         📋 聯絡資訊已複製到您的剪貼簿！
@@ -1174,7 +1177,7 @@ textarea::placeholder {
         </div>
     </div>
 
-      <footer id="global-footer" class="custom-footer"></footer>
+
 
     <script>
         // Supabase 金鑰與連線初始化資料
@@ -2167,25 +2170,5 @@ fetch('/header.html')
         window.addEventListener('resize', adjustNavItems);
     }
   
-// ==========================================
-// 載入頁尾並處理年份（維持原樣）
-// ==========================================
-    fetch('/footer.html')
-    .then(response => response.text())
-    .then(data => {
-        const footerContainer = document.getElementById('global-footer');
-        if (footerContainer) {
-            footerContainer.innerHTML = data;
-            
-            // 頁尾載入完成後，更新年份
-            const yearSpan = document.getElementById('current-year');
-            if (yearSpan) {
-                yearSpan.textContent = new Date().getFullYear();
-            }
-        }
-    })
-    .catch(err => console.error("頁尾載入失敗:", err));
-
     </script>
-</body>
-</html>
+</BaseLayout>
