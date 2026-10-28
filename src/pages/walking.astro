@@ -1,0 +1,434 @@
+---
+// 匯入 Layout
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout>
+<title>空間客舍 Slow Pace Studio</title>
+<Fragment slot="head">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>喃喃踱步 - Slowpace Studio</title>
+
+  <link rel="icon" sizes="192x192" href="/images/logo-small2.png" type="image/x-icon">
+  <link rel="shortcut icon" href="/images/logo-small2.png" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/images/logo-small2.png" type="image/x-icon">
+  </Fragment>
+
+  <style>
+    /* ==========================================================================
+       1. 全域基礎重設 (Reset CSS) —— 清除瀏覽器預設間距，防止排版移位
+       ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+    html, body, div, p, h1, h2, h3, section, footer, main, ul, li {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box; /* 讓 padding 不會撐大卡片的實際總寬度 */
+      background: transparent;
+      border: 0;
+      list-style: none;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: #333;
+      background-color: #fafafa; /* 網頁底色：極淺灰 */
+      overflow-x: hidden; /* 防止跑馬燈造成網頁左右出現滾動條 */
+      overflow-y: scroll;
+    }
+
+    #site-root {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 網頁主內容外殼：限制最大寬度並居中 */
+    #PAGES_CONTAINER {
+      flex: 1;
+      width: 100%;
+      max-width: 1200px; /* 電腦版最大寬度 */
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* ==========================================================================
+       2. 跑馬燈樣式區 (Marquee)
+       ========================================================================== */
+    .marquee-container {
+      width: 100%;
+      overflow: hidden;
+      background-color: #f0ede6; /* 跑馬燈背景色：米啡色 */
+      padding: 14px 0;
+      margin-bottom: 30px;
+      white-space: nowrap; /* 強制文字不換行 */
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+    }
+
+    .marquee-text {
+      display: inline-block;
+      /* 【可改動】10s 代表滾動一輪需 10 秒，數字愈小速度愈快 */
+      animation: marquee 6s linear infinite; 
+      font-weight: bold;
+      color: #444;
+      font-size: 16px;
+    }
+
+    /* 跑馬燈動畫：配合 6 次重複文字計算出的精確平滑重置點 (-16.66%) */
+    @keyframes marquee {
+      0% { transform: translate3d(0, 0, 0); }
+      100% { transform: translate3d(-16.66%, 0, 0); }
+    }
+
+    /* ==========================================================================
+       3. 主視覺橫幅區塊 (Hero Section) —— 標題與大圖
+       ========================================================================== */
+    .hero-section {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    /* 當螢幕寬度大於 768px (平板/電腦) 時，轉為左右兩欄 */
+    @media (min-width: 768px) {
+      .hero-section {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .hero-title {
+      font-size: 36px;
+      font-weight: 300;
+      color: #2c2c2c;
+      letter-spacing: 6px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .hero-image {
+      width: 100%;
+      height: auto;
+      max-height: 350px;
+      object-fit: cover; /* 確保圖片裁剪填滿而不變形 */
+      border-radius: 4px;
+    }
+
+    /* ==========================================================================
+       4. 新增區塊：源起與玩法樣式區 (Origin & Rules)
+       ========================================================================== */
+    .intro-section {
+      margin-bottom: 60px;
+      padding: 0 10px;
+    }
+
+    .intro-block {
+      background: #fff;
+      padding: 35px;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      margin-bottom: 30px;
+    }
+
+    .intro-block h2 {
+      font-size: 24px;
+      color: #2c2c2c;
+      margin-bottom: 15px;
+      font-weight: 400;
+      border-left: 4px solid #8c8275;
+      padding-left: 12px;
+    }
+
+    .intro-block p {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.8;
+      margin-bottom: 15px;
+    }
+
+    /* 玩法步驟列表 */
+    .rules-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .rules-list {
+        grid-template-columns: 1fr 1fr; /* 電腦版玩法分兩欄展示，比較美觀 */
+      }
+    }
+
+    .rule-item {
+      background: #fdfdfd;
+      border: 1px solid #eaeaea;
+      padding: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .rule-number {
+      background: #8c8275;
+      color: #fff;
+      font-weight: bold;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+
+    .rule-text {
+      font-size: 15px;
+      color: #444;
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       5. 思辯題區塊佈局 (Grid Layout) —— 固定一行 Show 3 題 + 手機模式設定
+       ========================================================================== */
+    .topic-section {
+      margin-top: 10px;
+      margin-bottom: 40px;
+    }
+
+    .section-title {
+      font-size: 32px;
+      text-align: center;
+      margin-bottom: 40px;
+      font-weight: 400;
+      color: #333;
+      letter-spacing: 2px;
+    }
+
+    /* 卡片包裝網格 */
+    .flow-grid {
+      display: grid;
+      grid-template-columns: 1fr; /* 【手機模式預設】單一欄位，上下排列 */
+      row-gap: 40px; /* 【手機模式預設】卡片與卡片（包含中間三角形）的上下距離 */
+      justify-items: center;
+    }
+
+    /* 當螢幕寬度大於 992px (電腦版) 時切換為橫向模式 */
+    @media (min-width: 992px) {
+      .flow-grid {
+        grid-template-columns: 1fr 1fr 1fr; /* 強制一行 show 3 個題 */
+        column-gap: 25px; /* 欄與欄之間保留間距給右側箭頭延伸 */
+        row-gap: 60px; /* 超過 3 題換行後的上下間距 */
+      }
+    }
+
+    /* ==========================================================================
+       6. 長方形卡片與幾何箭頭樣式 (Card & CSS Arrow)
+       ========================================================================== */
+    .topic-card {
+      background-color: #d8ded6; /* 依據 image_636edc.png 還原的淡綠灰色背景 */
+      padding: 15px 15px;
+      width: 100%;
+      max-width: 360px; /* 限制卡片最大寬度，防止手機拉得太長 */
+      max-height: 140px; /* 確保每張卡片高度基本一致 */
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      position: relative; /* 必須設定為 relative，箭頭才能精準黏在邊緣 */
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .topic-date {
+      font-size: 15px;
+      color: #444;
+      margin-bottom: 15px;
+    }
+
+    .topic-content {
+      font-size: 15px;
+      color: #222;
+      line-height: 1.7;
+    }
+
+    /* --------------------------------------------------------------------------
+       【手機模式與電腦模式的箭頭設定】
+       -------------------------------------------------------------------------- */
+    
+    /* 【手機直向模式預設】：箭頭在卡片正下方，向下指 (▼) */
+    .topic-card:after {
+      content: "";
+      position: absolute;
+      top: 100%; /* 黏在卡片底部 */
+      left: 50%; /* 靠左對齊到卡片中央 */
+      transform: translateX(-50%); /* 修正 X 軸確保水平完美置中 */
+      
+      /* 畫出向下的三角形 */
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 12px solid #b0b8ae; /* 箭頭頂部顏色 = 箭頭顏色（淡綠灰） */
+      
+      margin-top: 14px; /* 與下一張卡片的微調間距 */
+      z-index: 5;
+    }
+
+    /* 【電腦橫向模式】：當寬度大於 992px 時，箭頭自動切換到右邊，向前指 (▶) */
+    @media (min-width: 992px) {
+      .topic-card:after {
+        top: 50%; /* 改為垂直中央 */
+        left: 100%; /* 改為黏在最右邊 */
+        transform: translateY(-50%); /* 修正 Y 軸確保垂直完美置中 */
+        margin-top: 0; /* 清除手機模式的 margin */
+        
+        /* 重新畫出向右的三角形 */
+        border-top: 10px solid transparent;
+        border-bottom: 10px solid transparent;
+        border-left: 12px solid #b0b8ae; /* 顏色改到左邊框 */
+        border-right: none;
+      }
+    }
+@media (max-width: 768px) {
+      .hero-title {
+      font-size: 28px;
+}
+      .section-title {
+      font-size: 22px;
+  }
+
+      .topic-content {
+      font-size: 14px;
+  }
+    }
+    /* ==========================================================================
+       7. 頁尾區樣式 (Footer)
+       ========================================================================== */
+    #SITE_FOOTER {
+      background-color: #f4f4f4;
+      padding: 30px 20px;
+      text-align: center;
+      font-size: 13px;
+      color: #777;
+      border-top: 1px solid #ebeeec;
+      margin-top: 60px;
+    }
+  </style>
+
+
+  <div id="header-container"></div>    
+
+  <div id="site-root">
+    
+    <div class="marquee-container">
+      <div class="marquee-text">
+        思考是很棒的事哦！來客舍喃喃踱步吧！ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+        思考是很棒的事哦！來客舍喃喃踱步吧！ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+        思考是很棒的事哦！來客舍喃喃踱步吧！ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+        思考是很棒的事哦！來客舍喃喃踱步吧！ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+        思考是很棒的事哦！來客舍喃喃踱步吧！ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+        思考是很棒的事哦！來客舍喃喃踱步吧！ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      </div>
+    </div>
+
+    <main id="PAGES_CONTAINER">
+      
+      <section class="hero-section">
+        <div>
+          <h1 class="hero-title">喃喃踱步</h1>
+        </div>
+        <div>
+          <img class="hero-image" src="https://static.wixstatic.com/media/fc4bd9_bd2bfad3ccab414f8a3deae40ba61f3a~mv2.jpg/v1/fill/w_1080,h_599,al_c,q_85,enc_avif,quality_auto/fc4bd9_bd2bfad3ccab414f8a3deae40ba61f3a~mv2.jpg" alt="主視覺">
+        </div>
+      </section>
+
+      <section class="topic-section">
+        <h2 class="section-title">思辯題</h2>
+        
+        <div class="flow-grid">
+          
+          <div class="topic-card">
+            <div class="topic-date">日期：22/2/2025 （六）</div>
+            <p class="topic-content">現今世代粗口使用之自由度</p>
+          </div>
+
+          <div class="topic-card">
+            <div class="topic-date">日期：19/3/2025 （三）</div>
+            <p class="topic-content">對方吸煙與否，有幾大程度是你建立關係的考量</p>
+          </div>
+
+          <div class="topic-card">
+            <div class="topic-date">日期：30/4/2025 （三）</div>
+            <p class="topic-content">我們有多大程度可以決定自己的死亡？</p>
+          </div>
+
+          <div class="topic-card">
+            <div class="topic-date">日期：17/6/2025 （二）</div>
+            <p class="topic-content">你有幾大程度接受自己使用AI？</p>
+          </div>
+
+          </div>
+      </section>
+
+      <section class="intro-section">
+        
+        <div class="intro-block">
+          <h2>喃喃踱步的源起</h2>
+          <p>不是想爭辯對錯，不是想改變你我，不是想確認什麼，只是偶然好奇時﹑想不通時，會想一下為什麼這樣？我是怎樣想？你是怎樣想？</p>
+          <p>那腦海內的思考，並不偉大，也不是必需，但卻會心心念念記掛著，在空閒踱步時，總忍不住喃喃自語。</p>
+          <p>為了延伸思考，了解不同人的看法，我們希望邀請大家一起來空間客舍喃喃踱步。</p>
+          <p>我們將會每次定下一至兩條思辯題，然後讓大家各自思考，帶來客舍分享討論。   (也歡迎大家建議思辯題給我們)</p>
+        </div>
+
+        <div class="intro-block">
+          <h2>喃喃踱步的玩法</h2>
+          <div class="rules-list">
+            
+            <div class="rule-item">
+              <div class="rule-number">1</div>
+              <div class="rule-text">活動將設一主持人，協助追問﹑延伸討論。</div>
+            </div>
+
+            <div class="rule-item">
+              <div class="rule-number">2</div>
+              <div class="rule-text">開始時，主持人先邀請各參加者為該思辯題的討論方向給出一個分數 (0-10分)。</div>
+            </div>
+
+            <div class="rule-item">
+              <div class="rule-number">3</div>
+              <div class="rule-text">然後，大家各自表述因由，自由分享﹑追問和討論。</div>
+            </div>
+
+            <div class="rule-item">
+              <div class="rule-number">4</div>
+              <div class="rule-text">尾段時，主持人會詢問各參加者會否改變最初給的一個分數，及其中變與不變的因由。</div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+
+
+<script>
+
+
+</script>
+
+
+</BaseLayout>
