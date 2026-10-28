@@ -1,5 +1,9 @@
 ---
-import Layout from '../../layouts/Layout.astro';
+import Layout from '../../layouts/BaseLayout.astro';
+---
+<BaseLayout>
+<title>客舍讀書會 Slow Pace Reading Clubs</title>
+
 
 const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
 const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
@@ -48,7 +52,7 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
   <main class="main-container">
     <div class="detail-view-container" id="detailViewArea" style="display: block;">
       <div class="detail-nav-bar">
-        <a href="/day/reading" class="view-close-btn" style="text-decoration: none;">← 返回列表</a>
+        <a href="/reading" class="view-close-btn" style="text-decoration: none;">← 返回列表</a>
         <div class="page-switch-group">
           <button class="nav-btn" id="prevClubBtn">上一篇</button>
           <button class="nav-btn" id="nextClubBtn">下一篇</button>
@@ -93,18 +97,6 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
     document.getElementById('nextClubBtn').onclick = () => navigateClub(1);
   });
 
-  async function loadExternalHeader() {
-    try {
-      const resp = await fetch('/day/header.html');
-      if (resp.ok) document.getElementById('header-container').innerHTML = await resp.text();
-    } catch (e) {}
-  }
-  async function loadExternalFooter() {
-    try {
-      const resp = await fetch('/day/footer.html');
-      if (resp.ok) document.getElementById('global-footer').innerHTML = await resp.text();
-    } catch (e) {}
-  }
 
   // 🌟 關鍵改動：跳轉網址改用 targetClub.title
   function navigateClub(direction) {
@@ -154,3 +146,5 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
   .nav-btn:hover { background: #33251b; }
   @media (max-width: 600px) { .detail-layout { flex-direction: column; gap: 20px; } .detail-left-col { flex: none; width: 100%; max-width: 340px; margin: 0 auto; } .detail-view-container { padding: 20px; } }
 </style>
+
+</BaseLayout>
