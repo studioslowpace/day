@@ -107,7 +107,7 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
     const targetClub = window.globalClubsData[newIndex];
     if (targetClub && targetClub.title) {
       // 將網址改成中文書名
-      window.location.href = `/day/clubs/${encodeURIComponent(targetClub.title)}/`;
+      window.location.href = `/clubs/${encodeURIComponent(targetClub.title)}/`;
     }
   }
 
