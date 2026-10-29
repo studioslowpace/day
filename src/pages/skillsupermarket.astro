@@ -1185,6 +1185,7 @@ textarea::placeholder {
         const TABLE_NAME = 'skills';
         const POSTS_TABLE = 'posts';
         
+        const supabaseInstance = window.supabase || supabase;
         const client = supabase.createClient(supabaseUrl, supabaseKey);
         const defaultPassword = "slow2024"; // 全域管理端固定登入密碼
         
