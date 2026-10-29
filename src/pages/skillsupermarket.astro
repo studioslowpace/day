@@ -1200,31 +1200,26 @@ textarea::placeholder {
             fetchAllUserRecordsFromSupabase();
             setupRandomDefaultAvatar();
             // 🌟 監聽 Supabase 登入狀態，檢查是否為主理人 (is_admin)
-client.auth.onAuthStateChange(async (event, session) => {
-    const adminNavbar = document.getElementById('admin-navbar');
+    client.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+            const { data: profile, error } = await client
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', session.user.id)
+                .single();
 
-    if (session?.user) {
-        const { data: profile, error } = await client
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', session.user.id)
-            .single();
-
-        if (!error && profile && profile.is_admin === true) {
-            isAdmin = true;
-            // 🟢 自動顯示管理面板，不用點 Logo
-            adminNavbar?.classList.remove('hidden');
+            if (!error && profile && profile.is_admin === true) {
+                isAdmin = true;
+            } else {
+                isAdmin = false;
+            }
         } else {
             isAdmin = false;
-            adminNavbar?.classList.add('hidden');
         }
-    } else {
-        isAdmin = false;
-        adminNavbar?.classList.add('hidden');
-    }
-    updateAdminUI();
-    refreshView();
-});
+        updateAdminUI();
+        refreshView();
+    });
+        };
 
         // 從 Supabase 撈取委託單資料
         async function fetchPostsFromSupabase() {
@@ -2038,6 +2033,7 @@ async function handleAdminLogin() {
         return;
     }
 
+    // 透過 Supabase Auth 登入（預設管理員信箱格式）
     const { error } = await client.auth.signInWithPassword({ 
         email: 'admin@studio.local', 
         password: inputPwd 
@@ -2048,9 +2044,7 @@ async function handleAdminLogin() {
     } else {
         alert("🟢 主理人認證成功！");
         document.getElementById('admin-password-input').value = '';
-        
-        // 🟢 登入成功後立即自動展開管理面板
-        document.getElementById('admin-navbar')?.classList.remove('hidden');
+        // 登入成功後，onAuthStateChange 會自動觸發並更新 isAdmin 與 UI
     }
 }
 
