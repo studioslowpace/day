@@ -1,202 +1,123 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
-// 讓 Astro 在打包時去 Supabase 把所有篇章的 title 抓回來並生成靜態頁面
-export async function getStaticPaths() {
-  // 這裡需要引入你的 supabase 用來抓取所有篇章的 title
-  // 或者是用你目前的客戶端抓取邏輯
-  const { data: chapters } = await client.from('chapters').select('title');
-  
-  if (!chapters) return [];
+export const prerender = true;
 
-  return chapters.map(chap => ({
-    params: { title: chap.title },
-  }));
+// 1. 在建置時從 Supabase 抓取所有 chapters 資料，並找出所有不重複的篇章名稱
+export async function getStaticPaths() {
+  const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+  const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+  const tableName = 'chapters';
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${tableName}?select=*,carousel_slides(*)&order=created_at.asc`, {
+    headers: {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`
+    }
+  });
+
+  if (!response.ok) return [];
+  const records = await response.json();
+
+  // 找出所有不重複的 title (篇章名稱)
+  const uniqueTitles = [...new Set(records.map(r => r.title ? r.title.trim() : ''))].filter(Boolean);
+
+  // 為每一個篇章標題建立獨立的分頁
+  return uniqueTitles.map(chapterTitle => {
+    // 篩選出屬於這個篇章的所有項目（例如大澳篇底下的多個展覽）
+    const chapterItems = records.filter(r => r.title && r.title.trim() === chapterTitle);
+
+    return {
+      params: { title: chapterTitle },
+      props: { 
+        chapterTitle, 
+        chapterItems 
+      }
+    };
+  });
 }
 
-const { title } = Astro.params;
+// 2. 接收傳進來的資料
+const { chapterTitle, chapterItems } = Astro.props;
+const bgCol = chapterItems[0]?.bg_color || '#f5f5f5';
 ---
 
-<BaseLayout title={`${decodedTitle} — 空間共學`}>
-    <main class="container" id="chapterDetailPage" data-chapter-title={decodedTitle}>
-        <div class="loading-status">正在載入「{decodedTitle}」篇章內容...</div>
-    </main>
-
-    <!-- 載入 Supabase 與圖片壓縮工具 CDN -->
-    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script is:inline src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
-
-    <!-- 管理員編輯/修改的彈出視窗 -->
-    <div class="admin-modal" id="adminModal">
-        <div class="admin-modal-content">
-            <button class="close-modal-btn" id="closeAdminBtn">&times;</button>
-            <h2 id="modalFormTitle">修改項目</h2>
-            
-            <form id="chapterForm">
-                <input type="hidden" id="editChapterId" value="">
-
-                <div class="form-group">
-                    <label for="chapterTitle">篇章名稱 *</label>
-                    <input type="text" id="chapterTitle" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="chapterBgColor">篇章標題列背景顏色</label>
-                    <input type="color" id="chapterBgColor" value="#f5f5f5">
-                </div>
-                
-                <div class="form-group">
-                    <label for="exTitle">展覽名稱 *</label>
-                    <input type="text" id="exTitle" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="exImage">展覽海報圖片網址 *</label>
-                    <input type="text" id="exImage" required>
-                    <div class="upload-row">
-                        <label class="file-label-btn" for="exImageFile">📷 點此上傳本機海報</label>
-                        <input type="file" id="exImageFile" accept="image/*" style="display:none;">
-                        <span class="upload-status-text" id="exUploadStatus"></span>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="exDesc1">展覽介紹第一段</label>
-                    <textarea id="exDesc1" rows="3"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="exDesc2">展覽介紹第二段 (選填)</label>
-                    <textarea id="exDesc2" rows="2"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="exDate">展覽日期</label>
-                    <input type="text" id="exDate">
-                </div>
-                
-                <div class="form-group">
-                    <label for="exLink">Wix 作品詳細連結網址</label>
-                    <input type="text" id="exLink">
-                </div>
-
-                <hr style="border:0; border-top:1px solid #eee; margin:25px 0;">
-
-                <div class="form-group">
-                    <label for="tourTitle">活動/導賞標題 (選填)</label>
-                    <input type="text" id="tourTitle">
-                </div>
-                
-                <div class="form-group">
-                    <label for="tourImages">活動相片與介紹 (一行一組) (選填)</label>
-                    <textarea id="tourImages" rows="4"></textarea>
-                    <div class="upload-row" style="margin-top: 8px;">
-                        <label class="file-label-btn" for="tourImageFiles">📷 點此批次選擇活動相片 (可多選)</label>
-                        <input type="file" id="tourImageFiles" accept="image/*" multiple style="display:none;">
-                        <span class="upload-status-text" id="tourUploadStatus"></span>
-                    </div>
-                </div>
-                
-                <button type="submit" class="form-submit-btn" id="submitBtn">儲存變更</button>
-            </form>
+<BaseLayout title={`${chapterTitle} — 空間共學`}>
+    <main class="container" id="chapterDetailPage">
+        <div class="chapter-header-wrap" style={`background-color: ${bgCol};`}>
+            <div class="chapter-title"><h2>{chapterTitle}</h2></div>
+            <a href="/study" class="btn" style="font-size:13px; padding:6px 16px;">&larr; 返回共學總覽</a>
         </div>
-    </div>
 
-    <script>
-        // 初始化 Supabase
-        const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
-        const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-        const TABLE_NAME = 'chapters';
-        const STORAGE_BUCKET_NAME = 'images';
-        const client = supabase.createClient(supabaseUrl, supabaseKey);
-
-        const targetTitle = document.getElementById('chapterDetailPage').getAttribute('data-chapter-title');
-        let chapterCache = [];
-
-        // 載入該篇章的專屬資料
-        async function fetchChapterDetail() {
-            const container = document.getElementById('chapterDetailPage');
-            try {
-                const { data: records, error } = await client
-                    .from(TABLE_NAME)
-                    .select(`*, carousel_slides (*)`)
-                    .eq('title', targetTitle)
-                    .order('created_at', { ascending: true });
-
-                if (error) throw error;
-                if (!records || records.length === 0) {
-                    container.innerHTML = `<div class="loading-status">找不到「${targetTitle}」相關內容。</div>`;
-                    return;
-                }
-
-                chapterCache = records;
-                const bgCol = records[0].bg_color || '#f5f5f5';
-
-                let htmlContent = `
-                    <div class="chapter-header-wrap" style="background-color: ${bgCol};">
-                        <div class="chapter-title"><h2>${targetTitle}</h2></div>
-                        <a href="/study" class="btn" style="font-size:13px; padding:6px 16px;">&larr; 返回共學總覽</a>
+        {chapterItems.map((item, index) => (
+            <div>
+                {index > 0 && <hr class="inner-item-divider" />}
+                
+                <div class="exhibition-block">
+                    <div class="exhibition-image">
+                        <img src={item.ex_image || ''} alt={item.ex_title} oncontextmenu="return false;" ondragstart="return false;" />
                     </div>
-                `;
-
-                records.forEach((item, index) => {
-                    if (index > 0) htmlContent += `<hr class="inner-item-divider">`;
-                    const slides = (item.carousel_slides || []).sort((a, b) => a.sort_order - b.sort_order);
-
-                    htmlContent += `
-                        <div class="exhibition-block">
-                            <div class="exhibition-image">
-                                <img src="${item.ex_image || ''}" alt="${item.ex_title}" oncontextmenu="return false;" ondragstart="return false;">
+                    <div class="exhibition-text">
+                        <h3 style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>{item.ex_title}</span>
+                            <!-- 管理員修改/刪除按鈕 (透過前端 JS 判斷登入顯示) -->
+                            <div class="action-btns" data-item-id={item.id} style="display:none; gap:10px;">
+                                <button class="btn-edit" onclick={`window.openEditModal(${item.id})`}>修改</button>
+                                <button class="btn-delete" onclick={`window.deleteItem(${item.id})`}>刪除</button>
                             </div>
-                            <div class="exhibition-text">
-                                <h3 style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span>${item.ex_title}</span>
-                                    <div class="action-btns" id="btns-${item.id}" style="display:none; gap:10px;">
-                                        <button class="btn-edit" onclick="window.openEditModal(${item.id})">修改</button>
-                                        <button class="btn-delete" onclick="window.deleteItem(${item.id})">刪除</button>
-                                    </div>
-                                </h3>
-                                ${item.ex_desc_1 ? `<p>${item.ex_desc_1}</p>` : ''}
-                                ${item.ex_desc_2 ? `<p>${item.ex_desc_2}</p>` : ''}
-                                <p class="date">${item.ex_date || ''}</p>
-                                <a href="${item.ex_link || '#'}" class="btn" target="_blank">相關連結 / 展覽作品 <span class="arrow">&rarr;</span></a>
-                            </div>
-                        </div>
-                        ${(item.tour_title || slides.length > 0) ? `
-                        <div class="tour-block">
-                            ${item.tour_title ? `<h4>${item.tour_title}</h4>` : ''}
-                            ${slides.length > 0 ? `
+                        </h3>
+                        {item.ex_desc_1 && <p>{item.ex_desc_1}</p>}
+                        {item.ex_desc_2 && <p>{item.ex_desc_2}</p>}
+                        <p class="date">{item.ex_date || ''}</p>
+                        {item.ex_link && (
+                            <a href={item.ex_link} class="btn" target="_blank">相關連結 / 展覽作品 <span class="arrow">&rarr;</span></a>
+                        )}
+                    </div>
+                </div>
+
+                {(item.tour_title || (item.carousel_slides && item.carousel_slides.length > 0)) && (
+                    <div class="tour-block">
+                        {item.tour_title && <h4>{item.tour_title}</h4>}
+                        {item.carousel_slides && item.carousel_slides.length > 0 && (
                             <div class="carousel-container">
                                 <div class="carousel-counter"></div>
                                 <button class="carousel-btn prev-btn">&#10094;</button>
                                 <button class="carousel-btn next-btn">&#10095;</button>
                                 <div class="carousel-wrapper">
-                                    ${slides.map(slide => `
+                                    {item.carousel_slides.sort((a,b) => a.sort_order - b.sort_order).map(slide => (
                                         <div class="carousel-slide">
-                                            <img src="${slide.image_url}" alt="照片" oncontextmenu="return false;" ondragstart="return false;">
-                                            ${slide.caption ? `<p class="carousel-caption">${slide.caption}</p>` : ''}
+                                            <img src={slide.image_url} alt="照片" oncontextmenu="return false;" ondragstart="return false;" />
+                                            {slide.caption && <p class="carousel-caption">{slide.caption}</p>}
                                         </div>
-                                    `).join('')}
+                                    ))}
                                 </div>
-                            </div>` : ''}
-                        </div>` : ''}
-                    `;
-                });
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        ))}
+    </main>
 
-                container.innerHTML = htmlContent;
-                container.querySelectorAll('.carousel-container').forEach(cBox => initCarousel(cBox));
-                
-                // 檢查管理員權限以顯示編輯按鈕
-                checkAdminPermission();
+    <!-- 載入 Supabase 讓前端點擊修改/刪除或登入時同步生效 -->
+    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+        const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+        const client = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
-            } catch (err) {
-                console.error(err);
-                container.innerHTML = `<div class="loading-status" style="color:red;">載入內容發生錯誤。</div>`;
+        // 檢查管理員身分以顯示編輯按鈕
+        async function initAuthCheck() {
+            if (!client) return;
+            const { data: { session } } = await client.auth.getSession();
+            if (session) {
+                document.querySelectorAll('.action-btns').forEach(el => el.style.display = 'flex');
             }
         }
+        initAuthCheck();
 
-        // 輪播動畫引擎
-        function initCarousel(container) {
+        // 輪播初始化指令碼...
+        document.querySelectorAll('.carousel-container').forEach(container => {
             const wrapper = container.querySelector('.carousel-wrapper');
             const counter = container.querySelector('.carousel-counter');
             const prevBtn = container.querySelector('.prev-btn');
@@ -204,146 +125,20 @@ const { title } = Astro.params;
             const slides = container.querySelectorAll('.carousel-slide');
             if (slides.length <= 1) { if(prevBtn) prevBtn.style.display='none'; if(nextBtn) nextBtn.style.display='none'; return; }
             
-            let currentIndex = 0; let timer = null; const total = slides.length;
-            function update() { wrapper.style.transform = `translateX(-${currentIndex * 100}%)`; if (counter) counter.textContent = `${currentIndex + 1} / ${total}`; }
-            nextBtn.onclick = (e) => { e.stopPropagation(); currentIndex = (currentIndex + 1) % total; update(); };
-            prevBtn.onclick = (e) => { e.stopPropagation(); currentIndex = (currentIndex - 1 + total) % total; update(); };
-            container.addEventListener('mouseenter', () => clearInterval(timer));
-            container.addEventListener('mouseleave', () => timer = setInterval(() => { currentIndex = (currentIndex + 1) % total; update(); }, 4000));
-            timer = setInterval(() => { currentIndex = (currentIndex + 1) % total; update(); }, 4000);
+            let currentIndex = 0; const total = slides.length;
+            function update() { 
+                wrapper.style.transform = `translateX(-${currentIndex * 100}%)`; 
+                if (counter) counter.textContent = `${currentIndex + 1} / ${total}`; 
+            }
+            if(nextBtn) nextBtn.onclick = (e) => { e.stopPropagation(); currentIndex = (currentIndex + 1) % total; update(); };
+            if(prevBtn) prevBtn.onclick = (e) => { e.stopPropagation(); currentIndex = (currentIndex - 1 + total) % total; update(); };
             update();
-        }
-
-        // 檢查登入狀態顯示管理按鈕
-        async function checkAdminPermission() {
-            const { data: { session } } = await client.auth.getSession();
-            if (session) {
-                document.querySelectorAll('.action-btns').forEach(el => el.style.display = 'flex');
-            }
-        }
-
-        // 編輯與刪除互動邏輯
-        window.openEditModal = function(id) {
-            const item = chapterCache.find(c => c.id === id);
-            if (!item) return;
-
-            document.getElementById('modalFormTitle').textContent = `修改項目 — ${item.ex_title}`;
-            document.getElementById('editChapterId').value = item.id;
-            document.getElementById('chapterTitle').value = item.title;
-            document.getElementById('chapterBgColor').value = item.bg_color || '#f5f5f5';
-            document.getElementById('exTitle').value = item.ex_title;
-            document.getElementById('exImage').value = item.ex_image;
-            document.getElementById('exDesc1').value = item.ex_desc_1 || '';
-            document.getElementById('exDesc2').value = item.ex_desc_2 || '';
-            document.getElementById('exDate').value = item.ex_date || '';
-            document.getElementById('exLink').value = item.ex_link || '';
-            document.getElementById('tourTitle').value = item.tour_title || '';
-
-            const sortedSlides = (item.carousel_slides || []).sort((a,b)=> a.sort_order - b.sort_order);
-            const lines = sortedSlides.map(s => s.caption ? `${s.image_url} | ${s.caption}` : s.image_url);
-            document.getElementById('tourImages').value = lines.join('\n');
-
-            document.getElementById('adminModal').style.display = 'flex';
-        };
-
-        window.deleteItem = async function(id) {
-            if (!confirm('確認刪除此項目嗎？')) return;
-            await client.from(TABLE_NAME).delete().eq('id', id);
-            alert('刪除成功！');
-            window.location.reload();
-        };
-
-        // 關閉 Modal
-        document.getElementById('closeAdminBtn').onclick = () => {
-            document.getElementById('adminModal').style.display = 'none';
-        };
-
-        // 表單送出修改
-        document.getElementById('chapterForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const editId = document.getElementById('editChapterId').value;
-            const payload = {
-                title: document.getElementById('chapterTitle').value.trim(),
-                bg_color: document.getElementById('chapterBgColor').value,
-                ex_title: document.getElementById('exTitle').value.trim(),
-                ex_image: document.getElementById('exImage').value.trim(),
-                ex_desc_1: document.getElementById('exDesc1').value.trim(),
-                ex_desc_2: document.getElementById('exDesc2').value.trim(),
-                ex_date: document.getElementById('exDate').value.trim(),
-                ex_link: document.getElementById('exLink').value.trim(),
-                tour_title: document.getElementById('tourTitle').value.trim()
-            };
-
-            const rawLines = document.getElementById('tourImages').value.split('\n');
-            const slideRowsData = [];
-            rawLines.forEach((line, idx) => {
-                const cleanLine = line.trim();
-                if (!cleanLine) return;
-                let url = cleanLine;
-                let caption = '';
-                if (cleanLine.includes('|')) {
-                    const parts = cleanLine.split('|');
-                    url = parts[0].trim();
-                    caption = parts[1] ? parts[1].trim() : '';
-                }
-                slideRowsData.push({ url, caption, order: idx });
-            });
-
-            try {
-                await client.from(TABLE_NAME).update(payload).eq('id', editId);
-                await client.from('carousel_slides').delete().eq('chapter_id', editId);
-
-                if (slideRowsData.length > 0) {
-                    const slideRows = slideRowsData.map(item => ({
-                        chapter_id: editId,
-                        image_url: item.url,
-                        caption: item.caption,
-                        sort_order: item.order
-                    }));
-                    await client.from('carousel_slides').insert(slideRows);
-                }
-
-                alert('🎉 資料更新成功！');
-                document.getElementById('adminModal').style.display = 'none';
-                window.location.reload();
-            } catch (err) {
-                alert('更新錯誤：' + err.message);
-            }
         });
-
-        // 圖片壓縮上傳監聽
-        async function uploadAndCompressFile(file, statusEl) {
-            try {
-                statusEl.textContent = '壓縮中...';
-                const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true });
-                statusEl.textContent = '上傳中...';
-                const fileExt = file.name.split('.').pop();
-                const filePath = `uploads/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-                const { error } = await client.storage.from(STORAGE_BUCKET_NAME).upload(filePath, compressedFile);
-                if (error) throw error;
-                const { data: urlData } = client.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(filePath);
-                statusEl.textContent = '✅ 完成！';
-                return urlData.publicUrl;
-            } catch (err) {
-                statusEl.textContent = '❌ ' + err.message;
-                return null;
-            }
-        }
-
-        document.getElementById('exImageFile').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const url = await uploadAndCompressFile(file, document.getElementById('exUploadStatus'));
-                if (url) document.getElementById('exImage').value = url;
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', fetchChapterDetail);
     </script>
 </BaseLayout>
 
 <style>
-    /* 複用原本的排版與按鈕樣式 */
+    /* 保持你原本精美的 CSS 樣式 */
     .chapter-section { padding: 40px 25px; border-radius: 16px; margin-bottom: 60px; background-color: #ffffff; box-shadow: 0 2px 15px rgba(0,0,0,0.02); }
     .chapter-header-wrap { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin: 10px 0 30px; padding: 15px 30px; border-radius: 12px; }
     .chapter-title h2 { font-size: 26px; color: #2c2c2c; font-weight: 500; margin: 0; }
@@ -365,25 +160,13 @@ const { title } = Astro.params;
     .btn-edit:hover { border-color: #404040; background: #ffffff; }
     .btn-delete:hover { border-color: #ff4d4f; color: #ff4d4f; background: #fff1f0; }
 
-    /* 相片輪播 */
+    /* 相片輪播樣式 */
     .carousel-container { position: relative; max-width: 860px; margin: 0 auto; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-radius: 8px; background-color: #1a1a1a; }
     .carousel-wrapper { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); width: 100%; }
     .carousel-slide { min-width: 100%; position: relative; }
-    .carousel-slide img { width: 100%; height: 520px; object-type: contain; background-color: #1a1a1a; }
+    .carousel-slide img { width: 100%; height: 520px; object-fit: contain; background-color: #1a1a1a; }
     .carousel-counter { position: absolute; top: 25px; right: 35px; background: rgba(0, 0, 0, 0.4); color: #ffffff; padding: 4px 14px; font-size: 13px; border-radius: 20px; z-index: 10; }
     .carousel-caption { position: absolute; bottom: 0; left: 0; right: 0; margin: 0; padding: 25px 100px 25px 35px; background: rgba(0, 0, 0, 0.6); color: #ffffff; font-size: 14px; z-index: 5; }
     .carousel-btn { position: absolute; top: calc(50% - 22px); background: rgba(255, 255, 255, 0.85); border: none; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; }
     .prev-btn { left: 20px; } .next-btn { right: 20px; }
-
-    /* Modal 樣式 */
-    .admin-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-    .admin-modal-content { background-color: #fff; width: 90%; max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 35px; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); position: relative; }
-    .close-modal-btn { position: absolute; top: 25px; right: 25px; font-size: 24px; color: #aaa; cursor: pointer; border: none; background: none; }
-    .form-group { margin-bottom: 20px; }
-    .form-group label { display: block; font-size: 14px; color: #555; margin-bottom: 8px; font-weight: bold; }
-    .form-group input[type="text"], .form-group input[type="color"], .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-    .upload-row { display: flex; gap: 10px; margin-top: 6px; }
-    .file-label-btn { background-color: #eaeaea; color: #333; padding: 8px 16px; font-size: 13px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc; }
-    .upload-status-text { font-size: 12px; color: #2b73ff; font-weight: 500; }
-    .form-submit-btn { width: 100%; padding: 14px; background-color: #404040; color: #fff; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; }
 </style>
