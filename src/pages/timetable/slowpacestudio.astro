@@ -516,7 +516,6 @@ const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
 const TABLE_NAME = 'events'; 
 
 // 💡 確保共用全域 Supabase 客戶端，避免重複初始化警告
-window.client = window.client || (window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null);
 const client = window.client;
 
 const holidays = ["2026-01-01", "2026-02-17", "2026-02-18", "2026-02-19", "2026-04-03", "2026-04-04", "2026-04-06", "2026-04-07", "2026-05-01", "2026-05-25", "2026-06-19", "2026-07-01", "2026-09-26", "2026-10-01", "2026-10-19", "2026-12-25", "2026-12-26"];

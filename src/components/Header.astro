@@ -2,7 +2,14 @@
 <link rel="shortcut icon" href="/images/logo-small2.png" type="image/x-icon" />
 <link rel="apple-touch-icon" href="/images/logo-small2.png" type="image/x-icon" />
 
-<script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    if (!window.client) {
+        const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+        const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+        window.client = window.supabase.createClient(supabaseUrl, supabaseKey);
+    }
+</script>
 
 <header class="header-navbar">
     <div class="header-navbar-container">
@@ -144,11 +151,7 @@
 </style>
 
 <script>
-    // 初始化 Supabase 客戶端 (與頁面共用全域變數)
-    const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
-    const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-    // 防止重複宣告
-    window.client = window.client || (window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null);
+    const client = window.client;
 
     const setupHeaderAuth = () => {
         const authBtn = document.getElementById('auth-btn');
