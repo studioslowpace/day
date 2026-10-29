@@ -86,4 +86,176 @@ export const prerender = false;
 
         fetchTalksList();
     </script>
+
+        <style>
+        /* ==========================================================================
+           【1. 全域與基礎排版樣式】
+           ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #eaeaea; 
+            font-family: Arial, Helvetica, sans-serif;
+            color: #333333;
+        }
+
+        /* 頂部管理員專用黑色工具列（若移至 header.html 可將此 CSS 複製過去） */
+        .admin-toolbar {
+            background: #2c3e2f; 
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .admin-btn {
+            background: #0084ff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .admin-btn.logout { background: #8b0000; } 
+        .admin-btn.add-trigger { background: #2c3e2f; border: 1px solid #ffffff; font-size: 15px; padding: 10px 20px; } 
+        .admin-btn.toggle-mode { background: #6c757d; font-size: 11px; padding: 4px 8px; margin-bottom: 8px; display: inline-block; }
+
+        .mesh-layout {
+            display: grid;
+            grid-template-rows: min-content max-content;
+            grid-template-columns: 100%;
+            justify-content: stretch;
+            align-items: start;
+        }
+
+        #site-root {
+            width: 100%;
+            min-height: 100%;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .wixui-section {
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+
+        /* ==========================================================================
+           【2. SVG 特效標題】
+           ========================================================================== */
+        .title-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 40px; 
+            margin-top: 40px;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        .vector-letter { display: flex; align-items: flex-end; position: relative; }
+        .vector-letter svg { width: 120px; height: 120px; }
+        .vector-letter p { margin: 0 0 10px 8px; font-size: 18px; color: #000000; white-space: nowrap; }
+
+        .letter-1 svg { fill: #0084ff; } 
+        .letter-2 svg { fill: #9b9b9b; } 
+        .letter-3 svg { fill: #8b0000; } 
+        .letter-4 svg { fill: #b8c7ce; } 
+        .letter-5 svg { fill: #b6dc53; } 
+
+        
+        /* ==========================================================================
+           【3. 彈出視窗 (Modal) 共同樣式】
+           ========================================================================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000; 
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease; 
+        }
+
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+        .modal-box {
+            background: #ffffff;
+            width: 90%;
+            max-width: 600px;
+            max-height: 85vh; 
+            overflow-y: auto; 
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-box { transform: translateY(0); }
+
+        /* ==========================================================================
+           【4. 表單與活動排版】
+           ========================================================================== */
+        .editing-input { width: 100%; font-size: 15px; padding: 8px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .editing-textarea { width: 100%; height: 120px; font-size: 14px; line-height: 1.6; padding: 8px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        .upload-preview { display: block; max-width: 140px; margin: 10px 0; border: 1px dashed #ccc; padding: 4px; border-radius: 4px; }
+        .compressing-status { color: #ff9800; font-size: 12px; display: none; margin-bottom: 10px; font-weight: bold; }
+
+        .event-block { display: flex; flex-direction: row; gap: 40px; align-items: flex-start; width: 100%; box-sizing: border-box; }
+
+        /* 活動間隔線 */
+        .event-separator {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(to right, rgba(0,0,0,0), rgba(200,200,200,1), rgba(0,0,0,0)); 
+            margin: 40px 0; 
+        }
+
+        .event-image img {
+            width: 306px;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            -webkit-touch-callout: none; 
+        }
+
+        .event-content { flex: 1; position: relative; }
+        .event-content h2 { font-size: 22px; color: #2c3e2f; margin-top: 0; margin-bottom: 15px; font-weight: normal; }
+        .event-content p { font-size: 14px; line-height: 1.8; color: #444444; text-align: justify; }
+
+        .order-badge { display: inline-block; background: #777777; color: white; font-size: 11px; padding: 1px 5px; border-radius: 3px; margin-left: 8px; font-weight: bold; vertical-align: middle; }
+        .edit-badge { display: inline-block; background: #ff9800; color: white; font-size: 12px; padding: 2px 6px; border-radius: 3px; margin-left: 8px; cursor: pointer; vertical-align: middle; }
+
+        @media (max-width: 768px) {
+            .title-container { flex-wrap: wrap; gap: 20px; justify-content: center; }
+            .vector-letter svg { width: 30px; height: 30px; }
+            .vector-letter p { font-size: 10px; margin: 20px 0 0px 8px;}   
+            .event-block { flex-direction: column; align-items: center; text-align: center; }
+            .event-image img { width: 100%; max-width: 350px; }
+        }
+    </style>
 </BaseLayout>
