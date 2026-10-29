@@ -3,8 +3,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 export const prerender = false;
 
+const { title } = Astro.params;
+const chapterTitle = decodeURIComponent(title || '');
+
 // 1. 🌟 告訴 Astro 要為哪些「書名 (Title)」編譯成獨立 HTML 分頁
-export async function getStaticPaths() {
+
   const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
   const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
   const tableName = 'reading_clubs';
@@ -30,7 +33,7 @@ export async function getStaticPaths() {
       }
     };
   });
-}
+
 
 // 2. 接收從 getStaticPaths 傳過來的當前資料
 const { club, allClubs, currentIndex } = Astro.props;
