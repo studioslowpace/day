@@ -1,0 +1,81 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export const prerender = false;
+
+const { title } = Astro.params;
+const decodedTitle = decodeURIComponent(title || '');
+
+const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+
+// 即時向 Supabase 查詢該筆談話資料
+const response = await fetch(`${supabaseUrl}/rest/v1/talks?title=eq.${encodeURIComponent(decodedTitle)}&select=*`, {
+  headers: {
+    'apikey': supabaseKey,
+    'Authorization': `Bearer ${supabaseKey}`
+  }
+});
+
+if (!response.ok) {
+  throw new Error('無法取得談話資料');
+}
+
+const records = await response.json();
+const talk = records[0] || null;
+
+if (!talk) {
+  return Astro.redirect('/404');
+}
+
+const formattedContent = talk.description ? talk.description.replace(/\n/g, '<br>') : '';
+---
+
+<BaseLayout title={`${talk.title} — 客舍談話`}>
+    <main class="container" style="max-width: 900px; margin: 40px auto; padding: 0 20px;">
+        <div style="margin-bottom: 20px;">
+            <a href="/talking" style="text-decoration: none; color: #666; font-size: 14px;">&larr; 返回談話總覽</a>
+        </div>
+
+        <div style="background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h1 style="font-size: 28px; color: #2c3e2f; margin: 0; font-weight: normal;">{talk.title}</h1>
+                
+                <!-- 管理員修改/刪除按鈕 (預設隱藏，前端 JS 驗證登入後顯示) -->
+                <div id="admin-action-btns" style="display: none; gap: 10px;">
+                    <button class="btn-edit" onclick={`window.openEditModal(${talk.id})`}>修改</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <img src={talk.image_url} alt={talk.title} style="width: 100%; max-height: 500px; object-fit: contain; border-radius: 8px; background: #1a1a1a;" oncontextmenu="return false;" ondragstart="return false;" />
+            </div>
+
+            <div style="font-size: 16px; line-height: 2; color: #333; text-align: justify; white-space: pre-wrap;">
+                <Fragment set:html={formattedContent} />
+            </div>
+        </div>
+    </main>
+
+    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+        const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+        const client = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+
+        async function checkAdmin() {
+            if (!client) return;
+            const { data: { session } } = await client.auth.getSession();
+            if (session) {
+                const btns = document.getElementById('admin-action-btns');
+                if (btns) btns.style.display = 'flex';
+            }
+        }
+        checkAdmin();
+
+        window.openEditModal = function(id) {
+            // 這裡可以串接你的編輯 Modal 邏輯
+            alert("準備編輯談話 ID: " + id);
+        }
+    </script>
+</BaseLayout>
