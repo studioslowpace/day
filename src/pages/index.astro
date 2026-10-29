@@ -34,27 +34,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 
     <style>
-            *, *::before, *::after {
-  box-sizing: border-box;
+  html, body {
+    height: 100%;
 }
-        /* --- 全網頁基礎防懸空與穩定排版 --- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        html, body {
-            height: 100%;
-        }
-        body {
-            background-color: #FAFAF7; 
-            font-family: "Noto Sans TC", sans-serif;
-            color: #4A4A4A;
-            -webkit-font-smoothing: antialiased;
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
+body {
+    background-color: #FAFAF7; 
+    font-family: "Noto Sans TC", sans-serif;
+    color: #4A4A4A;
+    -webkit-font-smoothing: antialiased;
+    /* 移除 body 的 flex，改回傳統區塊排版 */
+    display: block; 
+    width: 100%;
+}
 
 /* 定義 CSS 變數以進行統一管理與優化 */
 :root {
