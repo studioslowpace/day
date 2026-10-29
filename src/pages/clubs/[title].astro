@@ -1,42 +1,40 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
+// 1. 開啟 SSR 動態渲染，移除舊的 getStaticPaths
 export const prerender = false;
 
+// 2. 從網址取得當前的書名標題並解碼
 const { title } = Astro.params;
-const chapterTitle = decodeURIComponent(title || '');
+const decodedTitle = decodeURIComponent(title || '');
 
-// 1. 🌟 告訴 Astro 要為哪些「書名 (Title)」編譯成獨立 HTML 分頁
+const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+const tableName = 'reading_clubs';
 
-  const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
-  const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-  const tableName = 'reading_clubs';
+// 3. 即時從 Supabase 抓取所有讀書會資料（維持原本的排序）
+const response = await fetch(`${supabaseUrl}/rest/v1/${tableName}?select=*&order=sort_order.desc`, {
+  headers: {
+    'apikey': supabaseKey,
+    'Authorization': `Bearer ${supabaseKey}`
+  }
+});
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/${tableName}?select=*&order=sort_order.desc`, {
-    headers: {
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`
-    }
-  });
+if (!response.ok) {
+  throw new Error('無法取得資料庫資料');
+}
 
-  if (!response.ok) return [];
-  const clubs = await response.json();
+const allClubs = await response.json();
 
-  // 為每一筆資料分配路由與傳遞相應資料
-  return clubs.map((club, index) => {
-    return {
-      params: { title: club.title ? club.title.toString() : `club-${index}` },
-      props: { 
-        club, 
-        allClubs: clubs, 
-        currentIndex: index 
-      }
-    };
-  });
+// 4. 找出當前點擊的這一本書在陣列中的位置
+const currentIndex = allClubs.findIndex(c => c.title && c.title.trim() === decodedTitle);
+const club = currentIndex !== -1 ? allClubs[currentIndex] : null;
 
+// 如果找不到這本書，可以導向 404 或首頁
+if (!club) {
+  return Astro.redirect('/404');
+}
 
-// 2. 接收從 getStaticPaths 傳過來的當前資料
-const { club, allClubs, currentIndex } = Astro.props;
 const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : '';
 ---
 
