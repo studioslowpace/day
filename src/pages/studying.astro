@@ -5,6 +5,9 @@ export const prerender = false;
 
 <BaseLayout title="空間共學 — Slow Pace Studio">
     <section class="hero-section">
+        <button class="hero-logo-btn" id="secretAdminLogo" title="管理員登入">
+            <img src="/images/logo-small2.png" alt="Logo" oncontextmenu="return false;" ondragstart="return false;">
+        </button>
         <div class="hero-content">
             <h1>空間共學</h1>
             <p>以空間共學這個模式作為試驗，嘗試連結來自不同空間的人<br>讓大家可以到這裏一起分享、學習。</p>
@@ -14,7 +17,7 @@ export const prerender = false;
     <!-- 管理員新增按鈕 -->
     <div class="study-global-add-wrap" id="studyGlobalAddBlock" style="display:none; justify-content:center; margin:30px auto 10px;">
         <button class="btn-global-add" onclick="window.openCreateModal()">
-            <span>➕ 新增展覽與活動項目</span>
+            <span>新增展覽與活動項目</span>
         </button>
     </div>
 
@@ -26,29 +29,74 @@ export const prerender = false;
     <div class="admin-modal" id="adminModal">
         <div class="admin-modal-content">
             <button class="close-modal-btn" id="closeAdminBtn">&times;</button>
-            <h2>新增展覽與活動項目</h2>
+            <h2 id="modalFormTitle">管理展覽與活動項目</h2>
+            
             <form id="chapterForm">
+                <input type="hidden" id="editChapterId" value="">
+
                 <div class="form-group">
                     <label for="chapterTitle">篇章名稱 *</label>
-                    <input type="text" id="chapterTitle" placeholder="例如：大澳篇" required>
+                    <input type="text" id="chapterTitle" placeholder="例如：大澳篇、深水埗篇" required>
                 </div>
+
                 <div class="form-group">
                     <label for="chapterBgColor">篇章標題列背景顏色</label>
                     <input type="color" id="chapterBgColor" value="#f5f5f5">
                 </div>
+                
                 <div class="form-group">
                     <label for="exTitle">展覽名稱 *</label>
-                    <input type="text" id="exTitle" required>
+                    <input type="text" id="exTitle" placeholder="例如：展覽《水鄉印象》" required>
                 </div>
+
                 <div class="form-group">
                     <label for="exImage">展覽海報圖片網址 *</label>
-                    <input type="text" id="exImage" required>
+                    <input type="text" id="exImage" placeholder="可在下方直接上傳..." required>
+                    <div class="upload-row">
+                        <label class="file-label-btn" for="exImageFile">📷 點此上傳本機海報</label>
+                        <input type="file" id="exImageFile" accept="image/*" style="display:none;">
+                        <span class="upload-status-text" id="exUploadStatus"></span>
+                    </div>
                 </div>
+                
                 <div class="form-group">
-                    <label for="exDesc1">展覽介紹</label>
-                    <textarea id="exDesc1" rows="3"></textarea>
+                    <label for="exDesc1">展覽介紹第一段</label>
+                    <textarea id="exDesc1" rows="3" placeholder="請輸入介紹文案..."></textarea>
                 </div>
-                <button type="submit" class="form-submit-btn">發布新項目</button>
+                
+                <div class="form-group">
+                    <label for="exDesc2">展覽介紹第二段 (選填)</label>
+                    <textarea id="exDesc2" rows="2" placeholder="請輸入介紹文案..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="exDate">展覽日期</label>
+                    <input type="text" id="exDate" placeholder="例如：展覽日期：2026年6月12日">
+                </div>
+                
+                <div class="form-group">
+                    <label for="exLink">Wix 作品詳細連結網址</label>
+                    <input type="text" id="exLink" placeholder="https://...">
+                </div>
+
+                <hr style="border:0; border-top:1px solid #eee; margin:25px 0;">
+
+                <div class="form-group">
+                    <label for="tourTitle">活動/導賞標題 (選填)</label>
+                    <input type="text" id="tourTitle" placeholder="例如：空間共學 — 社區導賞活動">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tourImages">活動相片與介紹 (一行一組) (選填)</label>
+                    <textarea id="tourImages" rows="4" placeholder="圖片網址 | 這是相片介紹"></textarea>
+                    <div class="upload-row" style="margin-top: 8px;">
+                        <label class="file-label-btn" for="tourImageFiles">📷 點此批次選擇活動相片 (可多選)</label>
+                        <input type="file" id="tourImageFiles" accept="image/*" multiple style="display:none;">
+                        <span class="upload-status-text" id="tourUploadStatus"></span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="form-submit-btn" id="submitBtn">儲存並發布</button>
             </form>
         </div>
     </div>
@@ -128,5 +176,85 @@ export const prerender = false;
     .hero-content { max-width: 750px; padding: 0 20px; }
     .hero-content h1 { font-size: 38px; margin: 0 0 15px 0; letter-spacing: 3px; font-weight: normal; }
     .hero-content p { font-size: 15px; color: #fff5f0; letter-spacing: 1.2px; margin: 0; }
-    .btn-global-add { background-color: #2b73ff; color: #ffffff; border: none; padding: 12px 24px; font-size: 15px; border-radius: 6px; cursor: pointer; }
+
+        /* ─── ➕ 獨立的「新增展覽」專用按鈕樣式 ─── */
+        .study-global-add-wrap {
+            display: none; /* 🔒 預設隱藏：只有管理員登入後才會顯示 */
+            justify-content: center;
+            margin: 30px auto 10px;
+            width: 100%;
+            max-width: 1500px;
+
+        }
+        .btn-global-add {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #2b73ff;
+            color: #ffffff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(43, 115, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+        .btn-global-add:hover {
+            background-color: #1456db;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(43, 115, 255, 0.3);
+        }
+        /* ==========================================================================
+           【5. 管理員後台彈出視窗表單 (Admin Modal Form)】
+           ========================================================================== */
+        .admin-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        .admin-modal-content {
+            background-color: #fff; width: 90%; max-width: 650px; max-height: 85vh;
+            overflow-y: auto; padding: 35px; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); position: relative;
+        }
+        .admin-modal-content h2 { margin-top: 0; font-size: 22px; border-bottom: 1px solid #eee; padding-bottom: 15px; font-weight: normal; }
+        .close-modal-btn { position: absolute; top: 25px; right: 25px; font-size: 24px; color: #aaa; cursor: pointer; border: none; background: none; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; color: #555; margin-bottom: 8px; font-weight: bold; }
+        .form-group input[type="text"], .form-group input[type="color"], .form-group textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; color: #404040; font-family: inherit;
+        }
+        .upload-row { display: flex; gap: 10px; margin-top: 6px; }
+        .file-label-btn {
+            background-color: #eaeaea; color: #333; padding: 8px 16px; font-size: 13px; border-radius: 4px; cursor: pointer; display: inline-block; border: 1px solid #ccc;
+        }
+        .file-label-btn:hover { background-color: #dddddd; }
+        .upload-status-text { font-size: 12px; color: #2b73ff; display: flex; align-items: center; font-weight: 500; }
+
+        .form-submit-btn { width: 100%; padding: 14px; background-color: #404040; color: #fff; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; }
+        .form-submit-btn:hover { background-color: #1a1a1a; }
+
+        @media (max-width: 768px) {
+
+            .hero-section { height: 240px; border-radius: 16px; }
+            .hero-content h1 { font-size: 22px; margin: 0 0 5px 0;} .hero-content p { font-size: 12px; }
+            .hero-logo-btn img { width: 45px; height: 45px;  }
+            .chapter-section { padding: 20px 10px; }
+            .chapter-header-wrap { flex-direction: column; padding: 15px; align-items: flex-start; gap: 10px; }
+            .exhibition-block { flex-direction: column; gap: 20px; }
+            .exhibition-image { min-width: 100%; }
+            .carousel-slide img { height: 340px; }
+            .carousel-caption, .carousel-btn, .carousel-counter { opacity: 1; }
+            .hero-content { 
+                background-color: rgba(64, 64, 64, 0.95); /* 改為 rgba，最後的 0.75 是透明度 (75%) */ 
+                padding: 10px 60px;
+            position: absolute;
+            top: 0rem;    /* 距離上方邊距，可自行調整 */
+    left: 0rem;  /* 距離右方邊距，可自行調整 */
+    z-index: 10;  /* 確保不會被其他卡片遮擋 */
+width: 100%;}
+
+        }
+
 </style>
