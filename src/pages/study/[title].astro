@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
-export const prerender = true;
+export const prerender = false;
 
 // 1. 在建置時從 Supabase 抓取所有 chapters 資料，並找出所有不重複的篇章名稱
 export async function getStaticPaths() {
