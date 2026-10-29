@@ -9,7 +9,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>客舍時間表 Timetable of Slow Pace Studio</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    </Fragment>
+    
 
     <style>
 
@@ -356,7 +356,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
     }
     </style>
-
+</Fragment>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 
@@ -510,6 +510,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 
 <script>
+    
 // --- 設定 ---
 const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
 const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
@@ -663,16 +664,18 @@ async function saveDB() {
     fetchData();
 }
 
+// 將原本的宣告改為掛載到 window 上
 window.renderMonthList = function() {
     const container = document.getElementById('popup-month-list');
-    if (!container) return;
+    if (!container) return; // 確保容器存在
+    
     container.innerHTML = dbData.months.map(m => `
         <button class="month-select-btn ${m === currentMonth ? 'active' : ''}" 
                 onclick="switchMonth('${m}')">
             ${m}
         </button>
     `).join('');
-};
+}
 
 window.switchMonth = function(m) {
     currentMonth = m;
