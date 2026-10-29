@@ -57,11 +57,11 @@
 <div id="searchModal" class="auth-modal" style="display: none;">
     <div class="auth-modal-content search-modal-content">
         <div class="search-modal-header">
-            <h3>全域快速搜尋</h3>
+            <h3>全站內容搜尋</h3>
             <button id="closeSearchModalBtn" class="search-close-btn">&times;</button>
         </div>
         <div class="auth-form-group">
-            <input type="text" id="globalSearchInput" placeholder="輸入關鍵字搜尋頁面或功能..." />
+            <input type="text" id="globalSearchInput" placeholder="輸入關鍵字搜尋頁面、標題或文章內容..." />
         </div>
         <div id="searchResults" class="search-results-list"></div>
     </div>
@@ -103,7 +103,6 @@
     .admin-icon-btn:hover { transform: scale(1.05); }
     #auth-btn #auth-btn-img { width: 40px; height: auto; opacity: 0.5; transition: all 0.3s; }
     
-    /* 登入成功後的發光發亮狀態 */
     #auth-btn.logged-in #auth-btn-img {
         opacity: 1;
         filter: drop-shadow(0 0 6px rgba(20, 101, 163, 0.8));
@@ -125,7 +124,7 @@
     .more-dropdown-content :global(a) { color: #333333 !important; padding: 12px 16px !important; text-decoration: none !important; display: block !important; text-align: left !important; }
     .more-dropdown-content :global(a:hover) { background-color: #f5f5f5 !important; color: #1465A3 !important; }
 
-    /* 🔐 密碼與搜尋彈窗專屬 CSS */
+    /* 🔐 彈窗專屬 CSS */
     .auth-modal {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.6); z-index: 30000; display: flex; justify-content: center; align-items: center;
@@ -136,7 +135,7 @@
         box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-family: sans-serif;
     }
     .search-modal-content {
-        width: 100%; max-width: 500px; text-align: left;
+        width: 100%; max-width: 550px; text-align: left;
     }
     .search-modal-header {
         display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
@@ -144,7 +143,7 @@
     .search-modal-header h3 { margin: 0; color: #4a3728; font-size: 18px; }
     .search-close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
     .search-results-list {
-        margin-top: 15px; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+        margin-top: 15px; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
     }
     .search-result-item {
         padding: 10px 12px; background: #f8f9fa; border-radius: 6px; text-decoration: none; color: #333; display: block; transition: background 0.2s, color 0.2s;
@@ -153,7 +152,6 @@
         background: #e6f0fa; color: #1465A3;
     }
 
-    .auth-modal-content h3 { margin: 0 0 20px 0; color: #4a3728; font-size: 18px; }
     .auth-form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; text-align: center; box-sizing: border-box; }
     #globalSearchInput { text-align: left; }
     .auth-btn-group { display: flex; justify-content: space-between; margin-top: 20px; gap: 10px; }
@@ -174,7 +172,7 @@
             position: absolute; 
             top: 100%; 
             left: 0; 
-            width: 100vw; /* 確保剛好撐滿螢幕寬度且不出界 */
+            width: 100vw; 
             max-width: 100vw;
             box-sizing: border-box;
             background: #fff; 
@@ -277,7 +275,6 @@
         checkGlobalLoginState();
     };
 
-    // 🟢 智慧收納與選單控制邏輯
     const setupHeaderMenu = () => {
         const toggleButton = document.querySelector('.menu-toggle') as HTMLButtonElement | null;
         const navLinks = document.querySelector('.header-nav-links') as HTMLElement | null;
@@ -342,7 +339,7 @@
             resizeTimeout = window.setTimeout(adjustNavItems, 100);
         });
 
-        // 🔍 全域即時搜尋功能實作
+        // 🔍 網頁內容與連結綜合搜尋功能
         const searchModal = document.getElementById('searchModal');
         const closeSearchModalBtn = document.getElementById('closeSearchModalBtn');
         const globalSearchInput = document.getElementById('globalSearchInput') as HTMLInputElement | null;
@@ -371,12 +368,6 @@
         }
 
         if (globalSearchInput && searchResults) {
-            // 收集所有導覽項目作為搜尋索引
-            const searchableItems = allLinks.map(link => ({
-                title: link.textContent?.trim() || '',
-                url: link.getAttribute('href') || '#'
-            }));
-
             globalSearchInput.oninput = (e) => {
                 const query = (e.target as HTMLInputElement).value.trim().toLowerCase();
                 if (!query) {
@@ -384,15 +375,46 @@
                     return;
                 }
 
-                const matches = searchableItems.filter(item => item.title.toLowerCase().includes(query));
+                let matches: { title: string; snippet: string; url: string }[] = [];
+
+                // 1. 搜尋導覽列項目
+                allLinks.forEach(link => {
+                    const title = link.textContent?.trim() || '';
+                    const url = link.getAttribute('href') || '#';
+                    if (title.toLowerCase().includes(query)) {
+                        matches.push({ title, snippet: `導覽選單頁面: ${url}`, url });
+                    }
+                });
+
+                // 2. 搜尋當前頁面中的文章/段落文字 (可根據你的網頁結構調整選擇器，例如 article, p, h1, h2, h3)
+                const contentElements = document.querySelectorAll('main h1, main h2, main h3, main p, article h1, article h2, article h3, article p, .content h1, .content h2, .content h3, .content p');
+                contentElements.forEach(el => {
+                    const text = el.textContent?.trim() || '';
+                    if (text.toLowerCase().includes(query)) {
+                        // 尋找最近的標題或父層作為標題代表
+                        const heading = el.closest('article, section')?.querySelector('h1, h2, h3')?.textContent || '頁面內容段落';
+                        matches.push({
+                            title: heading,
+                            snippet: text.length > 60 ? text.substring(0, 60) + '...' : text,
+                            url: window.location.pathname + '#'
+                        });
+                    }
+                });
+
+                // 也可以選擇從 Supabase 資料庫搜尋文章內容 (如果有建立文章資料表如 posts)
+                // 範例結構：await window.client.from('posts').select('title, content, slug').ilike('content', `%${query}%`)
 
                 if (matches.length === 0) {
-                    searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">找不到相關頁面或功能</div>';
+                    searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">找不到符合的網頁內容</div>';
                 } else {
-                    searchResults.innerHTML = matches.map(m => `
-                        <a href="${m.url}" class="search-result-item">
+                    // 去除重複的網址或項目
+                    const uniqueMatches = Array.from(new Set(matches.map(m => m.snippet)))
+                        .map(snippet => matches.find(m => m.snippet === snippet)!);
+
+                    searchResults.innerHTML = uniqueMatches.map(m => `
+                        <a href="${m.url}" class="search-result-item" onclick="document.getElementById('searchModal').style.display='none';">
                             <strong>${m.title}</strong>
-                            <div style="font-size: 0.8rem; color: #666; margin-top: 2px;">${m.url}</div>
+                            <div style="font-size: 0.85rem; color: #555; margin-top: 3px;">${m.snippet}</div>
                         </a>
                     `).join('');
                 }
