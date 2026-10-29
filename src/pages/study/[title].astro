@@ -1,44 +1,30 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
+// 1. 開啟 SSR 動態即時渲染
 export const prerender = false;
 
-// 1. 在建置時從 Supabase 抓取所有 chapters 資料，並找出所有不重複的篇章名稱
-export async function getStaticPaths() {
-  const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
-  const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-  const tableName = 'chapters';
+// 2. 從網址取得當前的篇章名稱 (例如「長沙灣篇」)
+const { title } = Astro.params;
+const chapterTitle = decodeURIComponent(title || '');
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/${tableName}?select=*,carousel_slides(*)&order=created_at.asc`, {
-    headers: {
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`
-    }
-  });
+const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+const tableName = 'chapters';
 
-  if (!response.ok) return [];
-  const records = await response.json();
+// 3. 即時向 Supabase 查詢該篇章的所有資料
+const response = await fetch(`${supabaseUrl}/rest/v1/${tableName}?title=eq.${encodeURIComponent(chapterTitle)}&select=*,carousel_slides(*)&order=created_at.asc`, {
+  headers: {
+    'apikey': supabaseKey,
+    'Authorization': `Bearer ${supabaseKey}`
+  }
+});
 
-  // 找出所有不重複的 title (篇章名稱)
-  const uniqueTitles = [...new Set(records.map(r => r.title ? r.title.trim() : ''))].filter(Boolean);
-
-  // 為每一個篇章標題建立獨立的分頁
-  return uniqueTitles.map(chapterTitle => {
-    // 篩選出屬於這個篇章的所有項目（例如大澳篇底下的多個展覽）
-    const chapterItems = records.filter(r => r.title && r.title.trim() === chapterTitle);
-
-    return {
-      params: { title: chapterTitle },
-      props: { 
-        chapterTitle, 
-        chapterItems 
-      }
-    };
-  });
+if (!response.ok) {
+  throw new Error('無法取得資料庫資料');
 }
 
-// 2. 接收傳進來的資料
-const { chapterTitle, chapterItems } = Astro.props;
+const chapterItems = await response.json();
 const bgCol = chapterItems[0]?.bg_color || '#f5f5f5';
 ---
 
