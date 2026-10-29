@@ -397,8 +397,8 @@ if (globalSearchInput && searchResults) {
                     // 💡 這裡列出你要搜尋的所有資料表與對應的欄位
                     // 請把 'posts', 'book_clubs', 'events' 換成你實際的資料表名稱
                     const queries = [
-                        window.client.from('posts').select('title, content, url').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(5),
-                        window.client.from('book_clubs').select('title, description, url').or(`title.ilike.%${query}%,description.ilike.%${query}%`).limit(5),
+                        window.client.from('posts').select('tasktitle, clientname, tasktag, taskdetails, reward').or(`tasktitle.like.%${query}%,clientname.ilike.%${query}%,tasktag.ilike.%${query}%,taskdetails.ilike.%${query}%,reward.ilike.%${query}%`).limit(5),
+                        window.client.from('reading_clubs').select('title, content, url').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(5),
                         window.client.from('events').select('title, details, url').or(`title.ilike.%${query}%,details.ilike.%${query}%`).limit(5)
                     ];
 
