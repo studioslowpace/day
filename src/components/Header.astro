@@ -273,7 +273,7 @@
         checkGlobalLoginState();
     };
 
-    const setupHeaderMenu = () => {
+   const setupHeaderMenu = () => {
         const toggleButton = document.querySelector('.menu-toggle') as HTMLButtonElement | null;
         const navLinks = document.querySelector('.header-nav-links') as HTMLElement | null;
 
@@ -366,76 +366,97 @@
         }
 
         // 🔍 多資料表並行搜尋
-let searchTimer: number;
-if (globalSearchInput && searchResults) {
-    globalSearchInput.oninput = (e) => {
-        const query = (e.target as HTMLInputElement).value.trim();
-        clearTimeout(searchTimer);
+        let searchTimer: number;
+        if (globalSearchInput && searchResults) {
+            globalSearchInput.oninput = (e) => {
+                const query = (e.target as HTMLInputElement).value.trim();
+                clearTimeout(searchTimer);
 
-        if (!query) {
-            searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">請輸入關鍵字搜尋...</div>';
-            return;
-        }
-
-        searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">搜尋中...</div>';
-
-        searchTimer = window.setTimeout(async () => {
-            let matches: { title: string; snippet: string; url: string }[] = [];
-
-            // 1. 先比對導覽列選單
-            allLinks.forEach(link => {
-                const title = link.textContent?.trim() || '';
-                const url = link.getAttribute('href') || '#';
-                if (title.toLowerCase().includes(query.toLowerCase())) {
-                    matches.push({ title, snippet: `導覽選單: ${url}`, url });
+                if (!query) {
+                    searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">請輸入關鍵字搜尋...</div>';
+                    return;
                 }
-            });
 
-            // 2. 同時從多個 Supabase 資料表查詢
-            if (window.client) {
-                try {
-                    // 💡 這裡列出你要搜尋的所有資料表與對應的欄位
-                    // 請把 'posts', 'book_clubs', 'events' 換成你實際的資料表名稱
-                    const queries = [
-                        window.client.from('posts').select('tasktitle, clientname, tasktag, taskdetails, reward').or(`tasktitle.like.%${query}%,clientname.ilike.%${query}%,tasktag.ilike.%${query}%,taskdetails.ilike.%${query}%,reward.ilike.%${query}%`).limit(5),
-                        window.client.from('reading_clubs').select('title, content, url').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(5),
-                        window.client.from('events').select('title, details, url').or(`title.ilike.%${query}%,details.ilike.%${query}%`).limit(5)
-                    ];
+                searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">搜尋中...</div>';
 
-                    // 使用 Promise.all 同時發送所有查詢
-                    const results = await Promise.all(queries);
+                searchTimer = window.setTimeout(async () => {
+                    let matches: { title: string; snippet: string; url: string }[] = [];
 
-                    results.forEach(({ data, error }) => {
-                        if (!error && data) {
-                            data.forEach((item: any) => {
-                                // 兼容不同的內文欄位名稱 (content, description, details)
-                                const snippetText = item.content || item.description || item.details || '';
-                                matches.push({
-                                    title: item.title || '無標題',
-                                    snippet: snippetText.length > 50 ? snippetText.substring(0, 50) + '...' : snippetText,
-                                    url: item.url || '#'
-                                });
-                            });
+                    // 1. 先比對導覽列選單
+                    allLinks.forEach(link => {
+                        const title = link.textContent?.trim() || '';
+                        const url = link.getAttribute('href') || '#';
+                        if (title.toLowerCase().includes(query.toLowerCase())) {
+                            matches.push({ title, snippet: `導覽選單: ${url}`, url });
                         }
                     });
-                } catch (err) {
-                    console.error('Supabase 多表搜尋連線異常:', err);
-                }
-            }
 
-            if (matches.length === 0) {
-                searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">找不到符合的內容</div>';
-            } else {
-                searchResults.innerHTML = matches.map(m => `
-                    <a href="${m.url}" class="search-result-item" onclick="document.getElementById('searchModal').style.display='none';">
-                        <strong>${m.title}</strong>
-                        <div style="font-size: 0.85rem; color: #555; margin-top: 3px;">${m.snippet}</div>
-                    </a>
-                `).join('');
-            }
-        }, 300);
-    };
-}
+                    // 2. 同時從多個 Supabase 資料表查詢
+                    if (window.client) {
+                        try {
+                            const queries = [
+                                window.client.from('posts').select('tasktitle, clientname, tasktag, taskdetails, reward, id').or(`tasktitle.ilike.%${query}%,clientname.ilike.%${query}%,tasktag.ilike.%${query}%,taskdetails.ilike.%${query}%,reward.ilike.%${query}%`).limit(5),
+                                window.client.from('reading_clubs').select('title, content').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(5),
+                                window.client.from('events').select('title, details').or(`title.ilike.%${query}%,details.ilike.%${query}%`).limit(5)
+                            ];
+
+                            // 使用 Promise.all 同時發送所有查詢
+                            const results = await Promise.all(queries);
+
+                            results.forEach(({ data, error }, index) => {
+                                if (!error && data) {
+                                    data.forEach((item: any) => {
+                                        if (index === 0) {
+                                            // 第一張表：posts (萬事屋任務)
+                                            const details = item.taskdetails || '';
+                                            const taskTitle = item.tasktitle || '未命名任務';
+                                            matches.push({
+                                                title: taskTitle,
+                                                snippet: `${details.length > 40 ? details.substring(0, 40) + '...' : details} | 報酬: ${item.reward || '無'}`,
+                                                url: `/posts/${postId}`
+                                            });
+                                        } else if (index === 1) {
+                                            // 第二張表：reading_clubs (讀書會 - 使用 [title].astro 動態路由)
+                                            const content = item.content || '';
+                                            const titleStr = item.title || '無標題';
+                                            const encodedTitle = encodeURIComponent(titleStr);
+                                            matches.push({
+                                                title: titleStr,
+                                                snippet: content.length > 50 ? content.substring(0, 50) + '...' : content,
+                                                url: `/clubs/${encodedTitle}` // 👈 請根據你的實際資料夾路徑修改
+                                            });
+                                        } else {
+                                            // 第三張表：events (活動)
+                                            const details = item.details || '';
+                                            const titleStr = item.title || '無標題';
+                                            const encodedTitle = encodeURIComponent(titleStr);
+                                            matches.push({
+                                                title: titleStr,
+                                                snippet: details.length > 50 ? details.substring(0, 50) + '...' : details,
+                                                url: `/events/${encodedTitle}` // 👈 請根據你的實際資料夾路徑修改
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        } catch (err) {
+                            console.error('Supabase 多表搜尋連線異常:', err);
+                        }
+                    }
+
+                    if (matches.length === 0) {
+                        searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">找不到符合的內容</div>';
+                    } else {
+                        searchResults.innerHTML = matches.map(m => `
+                            <a href="${m.url}" class="search-result-item" onclick="document.getElementById('searchModal').style.display='none';">
+                                <strong>${m.title}</strong>
+                                <div style="font-size: 0.85rem; color: #555; margin-top: 3px;">${m.snippet}</div>
+                            </a>
+                        `).join('');
+                    }
+                }, 300);
+            };
+        }
     };
 
     setupHeaderAuth();
