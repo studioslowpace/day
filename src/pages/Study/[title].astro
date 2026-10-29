@@ -1,12 +1,20 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
-// 1. 啟用伺服器端渲染或動態產出 (SSR / SSG)
-export const prerender = false;
+// 讓 Astro 在打包時去 Supabase 把所有篇章的 title 抓回來並生成靜態頁面
+export async function getStaticPaths() {
+  // 這裡需要引入你的 supabase 用來抓取所有篇章的 title
+  // 或者是用你目前的客戶端抓取邏輯
+  const { data: chapters } = await client.from('chapters').select('title');
+  
+  if (!chapters) return [];
 
-// 2. 從網址列取得動態參數 [title]
+  return chapters.map(chap => ({
+    params: { title: chap.title },
+  }));
+}
+
 const { title } = Astro.params;
-const decodedTitle = decodeURIComponent(title || '');
 ---
 
 <BaseLayout title={`${decodedTitle} — 空間共學`}>
