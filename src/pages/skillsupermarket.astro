@@ -888,7 +888,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         📋 聯絡資訊已複製到您的剪貼簿！
     </div>
 
-    <!-- 管理端導覽列 (改用 data-action 與 id 綁定事件) -->
+    <!-- 管理端導覽列 -->
     <div id="admin-navbar" class="hidden admin-nav">
         <div class="admin-nav-container">
             <div class="admin-title-row">
@@ -940,7 +940,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         
         <div class="hero-banner">
             <div id="banner-logo-trigger" class="banner-logo-group">
-              <img src="/images/logo-small2.png" alt="Logo" class="banner-logo-img">
+              <img src="/images/logo-small2.png" alt="Logo" class="banner-logo-img" oncontextmenu="return false;" ondragstart="return false;">
             </div>
             <div>
                 <h1 class="hero-title">客舍萬事屋</h1>
@@ -960,7 +960,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 <button id="header-upload-btn" class="btn-base btn-orange">+ 發布新委託</button>
             </div>
 
-            <!-- 分頁按鈕加上 data-tab 屬性 -->
             <div class="tabs-row">
                 <button id="tab-active" data-tab="active" class="tab-btn tab-active-orange">等待幫助的委託</button>
                 <button id="tab-completed" data-tab="completed" class="tab-btn">已完成的委託</button>
@@ -1147,1012 +1146,990 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
 </BaseLayout>
 
-    <script>
-        const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
-        const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-        const TABLE_NAME = 'skills';
-        const POSTS_TABLE = 'posts';
-        
-        const supabaseInstance = window.supabase || supabase;
-        const client = supabaseInstance.createClient(supabaseUrl, supabaseKey);
-        
-        let posts = [];
-        let skills = [];
-        let isAdmin = false;
-        let currentViewingPostId = null;
-        let currentTab = 'active';
-        let unlockedPosts = {};
-        let allUserRecords = [];
-        let currentTagFilter = 'all';
+<script>
+    const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+    const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+    const TABLE_NAME = 'skills';
+    const POSTS_TABLE = 'posts';
+    
+    const supabaseInstance = window.supabase || supabase;
+    const client = supabaseInstance.createClient(supabaseUrl, supabaseKey);
+    
+    let posts = [];
+    let skills = [];
+    let isAdmin = false;
+    let currentViewingPostId = null;
+    let currentTab = 'active';
+    let unlockedPosts = {};
+    let allUserRecords = [];
+    let currentTagFilter = 'all';
 
-        // 網頁載入完成後的初始化程序與事件繫結 (Method 2)
-        window.onload = function() {
-            fetchPostsFromSupabase();
-            fetchSkillsFromSupabase(); 
-            fetchAllUserRecordsFromSupabase();
-            setupRandomDefaultAvatar();
+    window.onload = function() {
+        fetchPostsFromSupabase();
+        fetchSkillsFromSupabase(); 
+        fetchAllUserRecordsFromSupabase();
+        setupRandomDefaultAvatar();
 
-            // 🌟 註冊所有 DOM 事件監聽器 (取代 HTML 裡的 onclick)
-            initEventListeners();
+        initEventListeners();
 
-            // 監聽 Supabase 登入狀態
-            client.auth.onAuthStateChange(async (event, session) => {
-                if (session?.user) {
-                    const { data: profile, error } = await client
-                        .from('profiles')
-                        .select('is_admin')
-                        .eq('id', session.user.id)
-                        .single();
+        client.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                const { data: profile, error } = await client
+                    .from('profiles')
+                    .select('is_admin')
+                    .eq('id', session.user.id)
+                    .single();
 
-                    if (!error && profile && profile.is_admin === true) {
-                        isAdmin = true;
-                    } else {
-                        isAdmin = false;
-                    }
+                if (!error && profile && profile.is_admin === true) {
+                    isAdmin = true;
                 } else {
                     isAdmin = false;
                 }
-                updateAdminUI();
-                refreshView();
+            } else {
+                isAdmin = false;
+            }
+            updateAdminUI();
+            refreshView();
+        });
+    };
+
+    function initEventListeners() {
+        document.getElementById('banner-logo-trigger')?.addEventListener('click', toggleAdminNavbar);
+        document.getElementById('btn-admin-close-nav')?.addEventListener('click', toggleAdminNavbar);
+        document.getElementById('btn-admin-login')?.addEventListener('click', handleAdminLogin);
+        document.getElementById('btn-admin-logout')?.addEventListener('click', handleAdminLogout);
+        document.getElementById('btn-admin-point-plus')?.addEventListener('click', () => adminAdjustPoints(1));
+        document.getElementById('btn-admin-point-minus')?.addEventListener('click', () => adminAdjustPoints(-1));
+
+        document.getElementById('header-chatroom-btn')?.addEventListener('click', () => {
+            window.open('https://studioslowpace.com/chatroom.html', '_blank');
+        });
+        document.getElementById('header-skill-btn')?.addEventListener('click', openSkillModal);
+        document.getElementById('header-upload-btn')?.addEventListener('click', openUploadModal);
+
+        document.querySelectorAll('.tabs-row .tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabName = e.currentTarget.getAttribute('data-tab');
+                if (tabName) switchTab(tabName);
             });
-        };
+        });
 
-        // 🌟 集中管理所有按鈕與動態元素的事件繫結
-        function initEventListeners() {
-            // 管理員面板開關與動作
-            document.getElementById('banner-logo-trigger')?.addEventListener('click', toggleAdminNavbar);
-            document.getElementById('btn-admin-close-nav')?.addEventListener('click', toggleAdminNavbar);
-            document.getElementById('btn-admin-login')?.addEventListener('click', handleAdminLogin);
-            document.getElementById('btn-admin-logout')?.addEventListener('click', handleAdminLogout);
-            document.getElementById('btn-admin-point-plus')?.addEventListener('click', () => adminAdjustPoints(1));
-            document.getElementById('btn-admin-point-minus')?.addEventListener('click', () => adminAdjustPoints(-1));
+        document.getElementById('btn-query-points')?.addEventListener('click', queryPersonalPoints);
+        document.getElementById('btn-back-home')?.addEventListener('click', backToHomeList);
 
-            // 頂部導覽列按鈕
-            document.getElementById('header-chatroom-btn')?.addEventListener('click', () => {
-                window.open('https://studioslowpace.com/chatroom.html', '_blank');
+        document.getElementById('btn-close-join')?.addEventListener('click', closeJoinModal);
+        document.getElementById('btn-close-complete')?.addEventListener('click', closeCompleteModal);
+        document.getElementById('btn-cancel-complete')?.addEventListener('click', closeCompleteModal);
+        document.getElementById('btn-confirm-complete')?.addEventListener('click', submitCompleteTask);
+        document.getElementById('btn-close-upload')?.addEventListener('click', closeUploadModal);
+        document.getElementById('btn-close-skill')?.addEventListener('click', closeSkillModal);
+
+        document.getElementById('join-form')?.addEventListener('submit', handleJoinSubmit);
+        document.getElementById('post-form')?.addEventListener('submit', handleFormSubmit);
+        document.getElementById('skill-form')?.addEventListener('submit', handleSkillSubmit);
+
+        document.getElementById('current-avatar-preview')?.addEventListener('click', () => toggleEmojiBank('post'));
+        document.getElementById('skill-avatar-preview')?.addEventListener('click', () => toggleEmojiBank('skill'));
+
+        document.querySelectorAll('.emoji-option').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                const emoji = e.currentTarget.getAttribute('data-emoji');
+                const mode = e.currentTarget.getAttribute('data-mode');
+                selectEmoji(emoji, mode);
             });
-            document.getElementById('header-skill-btn')?.addEventListener('click', openSkillModal);
-            document.getElementById('header-upload-btn')?.addEventListener('click', openUploadModal);
+        });
+    }
 
-            // 標籤分頁切換
-            document.querySelectorAll('.tabs-row .tab-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const tabName = e.currentTarget.getAttribute('data-tab');
-                    if (tabName) switchTab(tabName);
-                });
-            });
+    async function fetchPostsFromSupabase() {
+        try {
+            const { data, error } = await client.from(POSTS_TABLE).select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            posts = (data || []).map(post => ({ ...post, timeAgo: calculateTimeAgo(post.created_at) }));
+            refreshView();
+        } catch (err) { console.error("讀取委託失敗:", err.message); }
+    }
 
-            // 查詢個人點數
-            document.getElementById('btn-query-points')?.addEventListener('click', queryPersonalPoints);
+    async function fetchSkillsFromSupabase() {
+        try {
+            const { data, error } = await client.from(TABLE_NAME).select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            skills = data || [];
+            refreshView();
+        } catch (err) { console.error("讀取技能名冊失敗:", err.message); }
+    }
 
-            // 返回首頁
-            document.getElementById('btn-back-home')?.addEventListener('click', backToHomeList);
+    function refreshView() { 
+        if (currentViewingPostId !== null) { renderSinglePostView(currentViewingPostId); } 
+        else { renderPosts(); } 
+    }
 
-            // 彈窗關閉按鈕
-            document.getElementById('btn-close-join')?.addEventListener('click', closeJoinModal);
-            document.getElementById('btn-close-complete')?.addEventListener('click', closeCompleteModal);
-            document.getElementById('btn-cancel-complete')?.addEventListener('click', closeCompleteModal);
-            document.getElementById('btn-confirm-complete')?.addEventListener('click', submitCompleteTask);
-            document.getElementById('btn-close-upload')?.addEventListener('click', closeUploadModal);
-            document.getElementById('btn-close-skill')?.addEventListener('click', closeSkillModal);
+    async function fetchAllUserRecordsFromSupabase() {
+        try {
+            const { data, error } = await client.from('alluser_record').select('*');
+            if (error) throw error;
+            allUserRecords = data || [];
+            refreshView();
+        } catch (err) { console.error("讀取用戶紀錄失敗:", err.message); }
+    }
 
-            // 表單提交事件
-            document.getElementById('join-form')?.addEventListener('submit', handleJoinSubmit);
-            document.getElementById('post-form')?.addEventListener('submit', handleFormSubmit);
-            document.getElementById('skill-form')?.addEventListener('submit', handleSkillSubmit);
+    function countAllPoints() {
+        const scores = {};
+        allUserRecords.forEach(record => {
+            if (record.contact) {
+                const cleanContact = record.contact.trim();
+                scores[cleanContact] = {
+                    name: record.name || '神祕鄰里人',
+                    points: record.amount || 0
+                };
+            }
+        });
+        return scores;
+    }
 
-            // Emoji 選擇庫切換與選取
-            document.getElementById('current-avatar-preview')?.addEventListener('click', () => toggleEmojiBank('post'));
-            document.getElementById('skill-avatar-preview')?.addEventListener('click', () => toggleEmojiBank('skill'));
+    async function updateUserPointsInSupabase(contact, name, pointChange) {
+        if (!contact) return;
+        const cleanContact = contact.trim();
+        const cleanName = (name && name !== '神祕鄰里人') ? name : null;
 
-            document.querySelectorAll('.emoji-option').forEach(opt => {
-                opt.addEventListener('click', (e) => {
-                    const emoji = e.currentTarget.getAttribute('data-emoji');
-                    const mode = e.currentTarget.getAttribute('data-mode');
-                    selectEmoji(emoji, mode);
-                });
-            });
-        }
+        try {
+            const { data: existing, error: fetchError } = await client
+                .from('alluser_record')
+                .select('*')
+                .eq('contact', cleanContact)
+                .maybeSingle();
 
-        async function fetchPostsFromSupabase() {
-            try {
-                const { data, error } = await client.from(POSTS_TABLE).select('*').order('created_at', { ascending: false });
-                if (error) throw error;
-                posts = (data || []).map(post => ({ ...post, timeAgo: calculateTimeAgo(post.created_at) }));
-                refreshView();
-            } catch (err) { console.error("讀取委託失敗:", err.message); }
-        }
+            if (fetchError) throw fetchError;
 
-        async function fetchSkillsFromSupabase() {
-            try {
-                const { data, error } = await client.from(TABLE_NAME).select('*').order('created_at', { ascending: false });
-                if (error) throw error;
-                skills = data || [];
-                refreshView();
-            } catch (err) { console.error("讀取技能名冊失敗:", err.message); }
-        }
+            if (existing) {
+                const newAmount = (existing.amount || 0) + pointChange;
+                const updateData = { amount: newAmount };
+                if (cleanName) updateData.name = cleanName;
 
-        function refreshView() { 
-            if (currentViewingPostId !== null) { renderSinglePostView(currentViewingPostId); } 
-            else { renderPosts(); } 
-        }
-
-        async function fetchAllUserRecordsFromSupabase() {
-            try {
-                const { data, error } = await client.from('alluser_record').select('*');
-                if (error) throw error;
-                allUserRecords = data || [];
-                refreshView();
-            } catch (err) { console.error("讀取用戶紀錄失敗:", err.message); }
-        }
-
-        function countAllPoints() {
-            const scores = {};
-            allUserRecords.forEach(record => {
-                if (record.contact) {
-                    const cleanContact = record.contact.trim();
-                    scores[cleanContact] = {
-                        name: record.name || '神祕鄰里人',
-                        points: record.amount || 0
-                    };
-                }
-            });
-            return scores;
-        }
-
-        async function updateUserPointsInSupabase(contact, name, pointChange) {
-            if (!contact) return;
-            const cleanContact = contact.trim();
-            const cleanName = (name && name !== '神祕鄰里人') ? name : null;
-
-            try {
-                const { data: existing, error: fetchError } = await client
+                const { error: updateError } = await client
                     .from('alluser_record')
-                    .select('*')
-                    .eq('contact', cleanContact)
-                    .maybeSingle();
+                    .update(updateData)
+                    .eq('id', existing.id);
 
-                if (fetchError) throw fetchError;
-
-                if (existing) {
-                    const newAmount = (existing.amount || 0) + pointChange;
-                    const updateData = { amount: newAmount };
-                    if (cleanName) updateData.name = cleanName;
-
-                    const { error: updateError } = await client
-                        .from('alluser_record')
-                        .update(updateData)
-                        .eq('id', existing.id);
-
-                    if (updateError) throw updateError;
-                } else {
-                    const newRecord = {
-                        contact: cleanContact,
-                        name: cleanName || '神祕鄰里人',
-                        amount: pointChange
-                    };
-
-                    const { error: insertError } = await client
-                        .from('alluser_record')
-                        .insert([newRecord]);
-
-                    if (insertError) throw insertError;
-                }
-
-                await fetchAllUserRecordsFromSupabase();
-            } catch (err) {
-                console.error("更新用戶積分失敗:", err.message);
-                alert("⚠️ 寫入 alluser_record 失敗: " + err.message);
-            }
-        }
-
-        function queryPersonalPoints() {
-            const input = document.getElementById('search-point-input').value.trim();
-            if(!input) { alert("請輸入聯絡資訊再查詢喔！"); return; }
-            const allScores = countAllPoints();
-            const result = allScores[input];
-            if(result) {
-                alert(`🏮 查詢成功！\n鄰里人：${result.name}\n目前已累積： ${result.points} 點萬事分！\n太棒了，感謝您對客舍的付出！`);
+                if (updateError) throw updateError;
             } else {
-                alert(`目前查詢不到「${input}」的得點紀錄。快去接單幫忙賺取第一個萬事分吧！`);
-            }
-        }
+                const newRecord = {
+                    contact: cleanContact,
+                    name: cleanName || '神祕鄰里人',
+                    amount: pointChange
+                };
 
-        function switchTab(tabName) {
-            currentTab = tabName;
-            currentTagFilter = 'all';
-            ['tab-active', 'tab-completed', 'tab-skills'].forEach(t => {
-                const el = document.getElementById(t);
-                if(el) el.className = "tab-btn";
-            });
-            
-            if(tabName === 'active') document.getElementById('tab-active').className = "tab-btn tab-active-orange";
-            if(tabName === 'completed') document.getElementById('tab-completed').className = "tab-btn tab-active-orange";
-            if(tabName === 'skills') document.getElementById('tab-skills').className = "tab-btn tab-active-orange tab-btn-flex";
-            
-            const lbSection = document.getElementById('skills-leaderboard-section');
-            if (tabName === 'skills') {
-                lbSection?.classList.remove('hidden');
-                if (isAdmin) {
-                    document.getElementById('header-skill-btn')?.classList.remove('hidden');
-                    document.getElementById('header-upload-btn')?.classList.add('hidden');
-                }
-            } else {
-                lbSection?.classList.add('hidden');
-                document.getElementById('header-skill-btn')?.classList.add('hidden');
-                document.getElementById('header-upload-btn')?.classList.remove('hidden');
-            }
-            renderPosts();
-        }
+                const { error: insertError } = await client
+                    .from('alluser_record')
+                    .insert([newRecord]);
 
-        function formatHashtags(tagString) {
-            if (!tagString || tagString === '/') return '';
-            
-            return tagString
-                .trim()                        
-                .split(/\s+/)                  
-                .map(tag => {
-                    const cleanTag = tag.startsWith('#') ? tag : `#${tag}`;
-                    return `<span class="tag-click-trigger" data-tag="${cleanTag}" style="cursor: pointer; display: inline-block; margin-right: 4px;">${cleanTag}</span>`;
-                }) 
-                .join(' ');                    
-        }
-
-        function filterByTag(tag) {
-            currentTagFilter = tag;
-            renderPosts();
-        }
-
-        function renderPosts() {
-            const container = document.getElementById('posts-container');
-            if(!container) return;
-            container.innerHTML = '';
-
-            const allScores = countAllPoints();
-
-            if (currentTab === 'skills') {
-                const leaderboardTarget = document.getElementById('leaderboard-target');
-                if(leaderboardTarget) {
-                    const sortedHeroes = Object.keys(allScores)
-                        .map(k => ({ contact: k, ...allScores[k] }))
-                        .sort((a,b) => b.points - a.points)
-                        .slice(0, 3);
-                    
-                    if(sortedHeroes.length === 0) {
-                        leaderboardTarget.innerHTML = `<p class="leaderboard-empty-text">尚無得點紀錄，等待第一位英雄誕生！</p>`;
-                    } else {
-                        const medals = ['🥇', '🥈', '🥉'];
-                        leaderboardTarget.innerHTML = sortedHeroes.map((h, i) => `
-                            <div class="leaderboard-item">
-                                <span class="leaderboard-item-info">${medals[i]} <strong>${h.name}</strong> </span>
-                                <span class="leaderboard-item-points">🪙 ${h.points} 分</span>
-                            </div>
-                        `).join('');
-                    }
-                }
+                if (insertError) throw insertError;
             }
 
-            const filterBarContainer = document.getElementById('skill-filter-bar-container');
+            await fetchAllUserRecordsFromSupabase();
+        } catch (err) {
+            console.error("更新用戶積分失敗:", err.message);
+            alert("⚠️ 寫入 alluser_record 失敗: " + err.message);
+        }
+    }
 
-            if (currentTab === 'skills') {
-                if (skills.length === 0) {
-                    if(filterBarContainer) filterBarContainer.innerHTML = '';
-                    container.innerHTML = '<p class="container-empty-hint">目前尚無登記鄰里人技能。</p>';
-                    return;
-                }
+    function queryPersonalPoints() {
+        const input = document.getElementById('search-point-input').value.trim();
+        if(!input) { alert("請輸入聯絡資訊再查詢喔！"); return; }
+        const allScores = countAllPoints();
+        const result = allScores[input];
+        if(result) {
+            alert(`🏮 查詢成功！\n鄰里人：${result.name}\n目前已累積： ${result.points} 點萬事分！\n太棒了，感謝您對客舍的付出！`);
+        } else {
+            alert(`目前查詢不到「${input}」的得點紀錄。快去接單幫忙賺取第一個萬事分吧！`);
+        }
+    }
 
-                let allTagsSet = new Set();
-                skills.forEach(skill => {
-                    if (skill.skilltag) {
-                        skill.skilltag.trim().split(/\s+/).forEach(t => allTagsSet.add(t.startsWith('#') ? t : `#${t}`));
-                    }
-                    if (skill.learning && skill.learning !== '/') {
-                        skill.learning.trim().split(/\s+/).forEach(t => allTagsSet.add(t.startsWith('#') ? t : `#${t}`));
-                    }
-                });
-
-                if(filterBarContainer) {
-                    filterBarContainer.classList.remove('hidden');
-                    let filterHtml = `
-                        <div style="width: 100%; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; white-space: nowrap;">
-                            <button class="filter-tag-btn" data-tag="all" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 16px; border: 1px solid #ddd; background: ${currentTagFilter === 'all' ? '#333' : '#fff'}; color: ${currentTagFilter === 'all' ? '#fff' : '#333'}; cursor: pointer;">全部顯示</button>
-                    `;
-                    allTagsSet.forEach(tag => {
-                        const isActive = currentTagFilter === tag;
-                        filterHtml += `<button class="filter-tag-btn" data-tag="${tag}" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 16px; border: 1px solid #ddd; background: ${isActive ? '#333' : '#fff'}; color: ${isActive ? '#fff' : '#333'}; cursor: pointer;">${tag}</button>`;
-                    });
-                    filterHtml += `</div>`;
-                    filterBarContainer.innerHTML = filterHtml;
-                }
-
-                const filteredSkills = skills.filter(skill => {
-                    if (currentTagFilter === 'all') return true;
-                    const tText = (skill.skilltag || '') + ' ' + (skill.learning || '');
-                    return tText.includes(currentTagFilter.replace('#', ''));
-                });
-
-                if (filteredSkills.length === 0) {
-                    container.innerHTML = '<p class="container-empty-hint">沒有找到符合此標籤的鄰里人。</p>';
-                    return;
-                }
-
-                filteredSkills.forEach(skill => {
-                    const card = document.createElement('div');
-                    card.className = "task-card";
-                    
-                    const adminTools = isAdmin ? `
-                        <div class="card-admin-tools">
-                            <button class="btn-card-delete" data-skill-id="${skill.id}">🗑️</button>
-                        </div>` : '';
-                    
-                    const myPoint = allScores[skill.contact?.trim()]?.points || 0;
-
-                    const formattedTags = formatHashtags(skill.skilltag);
-                    const formattedLearning = formatHashtags(skill.learning);
-         
-                    const skillTagBadge = skill.skilltag && skill.skilltag !== '/' ? 
-                        `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-Top: 0.5rem">📜 應用中：${formattedTags}</span>` : '';
-                    const learningBadge = skill.learning && skill.learning !== '/' ? 
-                        `<span style="background: #f3f4f6; color: #4b5563; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-Top: 0.5rem;">📚 研習中：${formattedLearning}</span>` : '';
-
-                    card.innerHTML = `
-                        <div>
-                            <div class="task-card-header">
-                                <div class="avatar-circle-stone">${skill.emoji || '🧑‍🎨'}</div>
-                                <div style="flex: 1;">
-                                    <div class="title-with-badge">
-                                        <h3 class="task-card-title">${skill.name}</h3> 
-                                        <span class="point-badge">🪙 ${myPoint}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            ${adminTools}
-                            ${skillTagBadge}
-                            <br>
-                            ${learningBadge}
-                        </div>
-                        <div class="task-card-footer" style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
-                            <p class="task-card-description">${skill.description}</p>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            } else {
-                const isCompletedTarget = (currentTab === 'completed');
-                
-                const baseFilteredPosts = posts.filter(post => {
-                    const compVal = post.iscompleted !== undefined ? post.iscompleted : post.isCompleted;
-                    return !!compVal === isCompletedTarget;
-                });
-
-                let postTagsSet = new Set();
-                baseFilteredPosts.forEach(post => {
-                    if (post.tasktag) {
-                        post.tasktag.trim().split(/\s+/).forEach(t => postTagsSet.add(t.startsWith('#') ? t : `#${t}`));
-                    }
-                });
-
-                if (filterBarContainer && baseFilteredPosts.length > 0) {
-                    filterBarContainer.classList.remove('hidden');
-                    let filterHtml = `
-                        <div style="width: 100%; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; white-space: nowrap;">
-                            <button class="filter-tag-btn" data-tag="all" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 16px; border: 1px solid #ddd; background: ${currentTagFilter === 'all' ? '#333' : '#fff'}; color: ${currentTagFilter === 'all' ? '#fff' : '#333'}; cursor: pointer;">全部顯示</button>
-                    `;
-                    postTagsSet.forEach(tag => {
-                        const isActive = currentTagFilter === tag;
-                        filterHtml += `<button class="filter-tag-btn" data-tag="${tag}" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 16px; border: 1px solid #ddd; background: ${isActive ? '#333' : '#fff'}; color: ${isActive ? '#fff' : '#333'}; cursor: pointer;">${tag}</button>`;
-                    });
-                    filterHtml += `</div>`;
-                    filterBarContainer.innerHTML = filterHtml;
-                } else if (filterBarContainer) {
-                    filterBarContainer.classList.add('hidden');
-                }
-
-                const filteredPosts = baseFilteredPosts.filter(post => {
-                    if (currentTagFilter === 'all') return true;
-                    const tText = post.tasktag || '';
-                    return tText.includes(currentTagFilter.replace('#', ''));
-                });
-
-                if (filteredPosts.length === 0) {
-                    container.innerHTML = '<p class="container-empty-hint">此分類目前沒有符合此標籤的委託案件。</p>';
-                    return;
-                }
-
-                filteredPosts.forEach(post => {
-                    const hList = post.heroeslist || [];
-                    const count = hList.length;
-                    const card = document.createElement('div');
-                    
-                    const cEmoji = post.clientemoji || '🙋‍♂️';
-                    const tTitle = post.tasktitle || '';
-                    const cName = post.clientname || '';
-                    const tTag = formatHashtags(post.tasktag);
-                    const tDetails = post.taskdetails || '';
-                    const rwd = post.reward || '';
-                    const isComp = post.iscompleted !== undefined ? post.iscompleted : post.isCompleted;
-
-                    card.className = "task-card clickable-group card-post-item";
-                    card.setAttribute('data-post-id', post.id);
-
-                    let adminActionHtml = '';
-                    if (isAdmin) {
-                        adminActionHtml += `<button class="btn-card-delete" data-delete-post-id="${post.id}">🗑️</button>`;
-                    }
-
-                    card.innerHTML = `
-                        <div>
-                            <div class="task-card-header">
-                                <div class="avatar-circle-orange">${cEmoji}</div>
-                                <div style="flex: 1; min-width: 0;">
-                                    <h3 class="task-card-title text-ellipsis-2line">${tTitle}</h3>
-                                    <p class="task-card-subtitle">委託人：${cName} • ${count}人已接單</p>
-                                </div>
-                            </div>
-                            <div class="card-admin-tools">${adminActionHtml}</div>
-                            <div style="margin-bottom: 0.5rem;">
-                                <span class="tag-orange">${tTag}</span>
-                            </div>
-                            <p class="task-card-description text-ellipsis-5line">${tDetails}</p>
-                        </div>
-                        <div class="task-card-footer">
-                            <div class="reward-info-text">
-                                <span class="reward-highlight">💰 報酬：${rwd}</span> • <span>${post.timeAgo}</span>
-                            </div>
-                            ${isComp 
-                                ? `<span class="badge-status-success">
-                                    <span class="status-success-title">圓滿解決 🏮</span>
-                                    <span class="status-success-subtitle">貢獻者: ${post.completed_by_name || '無'}</span>
-                                   </span>`
-                                : `<button class="btn-base btn-orange btn-join-action" data-join-post-id="${post.id}">接受委託</button>`
-                            }
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
+    function switchTab(tabName) {
+        currentTab = tabName;
+        currentTagFilter = 'all';
+        ['tab-active', 'tab-completed', 'tab-skills'].forEach(t => {
+            const el = document.getElementById(t);
+            if(el) el.className = "tab-btn";
+        });
+        
+        if(tabName === 'active') document.getElementById('tab-active').className = "tab-btn tab-active-orange";
+        if(tabName === 'completed') document.getElementById('tab-completed').className = "tab-btn tab-active-orange";
+        if(tabName === 'skills') document.getElementById('tab-skills').className = "tab-btn tab-active-orange tab-btn-flex";
+        
+        const lbSection = document.getElementById('skills-leaderboard-section');
+        if (tabName === 'skills') {
+            lbSection?.classList.remove('hidden');
+            if (isAdmin) {
+                document.getElementById('header-skill-btn')?.classList.remove('hidden');
+                document.getElementById('header-upload-btn')?.classList.add('hidden');
             }
-
-            // 動態產生的按鈕統一使用 Event Delegation 綁定
-            bindDynamicElementEvents();
-            setTimeout(() => { lucide.createIcons(); }, 100);
-        }
-
-        // 🌟 處理動態生成卡片內的點擊事件委派
-        function bindDynamicElementEvents() {
-            // 標籤點擊過濾
-            document.querySelectorAll('.tag-click-trigger').forEach(el => {
-                el.onclick = (e) => {
-                    e.stopPropagation();
-                    filterByTag(e.currentTarget.getAttribute('data-tag'));
-                };
-            });
-
-            // 頂部篩選按鈕
-            document.querySelectorAll('.filter-tag-btn').forEach(btn => {
-                btn.onclick = (e) => {
-                    filterByTag(e.currentTarget.getAttribute('data-tag'));
-                };
-            });
-
-            // 任務卡片導向詳情
-            document.querySelectorAll('.card-post-item').forEach(card => {
-                card.onclick = (e) => {
-                    if (!e.target.closest('button')) {
-                        goToPostDetail(card.getAttribute('data-post-id'));
-                    }
-                };
-            });
-
-            // 接受委託按鈕
-            document.querySelectorAll('.btn-join-action').forEach(btn => {
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    openJoinModal(e.currentTarget.getAttribute('data-join-post-id'));
-                };
-            });
-
-            // 刪除技能
-            document.querySelectorAll('[data-skill-id]').forEach(btn => {
-                btn.onclick = (e) => {
-                    deleteSkill(e.currentTarget.getAttribute('data-skill-id'));
-                };
-            });
-
-            // 刪除貼文
-            document.querySelectorAll('[data-delete-post-id]').forEach(btn => {
-                btn.onclick = (e) => {
-                    deletePost(e.currentTarget.getAttribute('data-delete-post-id'));
-                };
-            });
-        }
-
-        function goToPostDetail(postId) {
-            currentViewingPostId = postId;
-            document.getElementById('main-content-layout').classList.add('hidden');
-            document.getElementById('header-upload-btn')?.classList.add('hidden');
+        } else {
+            lbSection?.classList.add('hidden');
             document.getElementById('header-skill-btn')?.classList.add('hidden');
-            document.getElementById('single-post-layout').classList.remove('hidden');
-            renderSinglePostView(postId);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.getElementById('header-upload-btn')?.classList.remove('hidden');
         }
+        renderPosts();
+    }
 
-        function backToHomeList() {
-            currentViewingPostId = null;
-            document.getElementById('single-post-layout').classList.add('hidden');
-            document.getElementById('main-content-layout').classList.remove('hidden');
-            switchTab(currentTab); 
-        }
+    function formatHashtags(tagString) {
+        if (!tagString || tagString === '/') return '';
+        
+        return tagString
+            .trim()                        
+            .split(/\s+/)                  
+            .map(tag => {
+                const cleanTag = tag.startsWith('#') ? tag : `#${tag}`;
+                return `<span class="tag-click-trigger" data-tag="${cleanTag}" style="cursor: pointer; display: inline-block; margin-right: 4px;">${cleanTag}</span>`;
+            }) 
+            .join(' ');                    
+    }
 
-        function verifyPostPasswordInline(postId) {
-            const post = posts.find(p => String(p.id) === String(postId));
-            if(!post) return;
-            const inputVal = document.getElementById('inline-pwd-input').value.trim();
-            
-            if(inputVal === post.password || isAdmin) {
-                unlockedPosts[postId] = true;
-                renderSinglePostView(postId);
-            } else {
-                alert("❌ 密碼錯誤！無法解鎖管理區塊。");
-            }
-        }
+    function filterByTag(tag) {
+        currentTagFilter = tag;
+        renderPosts();
+    }
 
-        function renderSinglePostView(postId) {
-            const post = posts.find(p => String(p.id) === String(postId));
-            const targetDiv = document.getElementById('single-post-render-target');
-            if (!post || !targetDiv) return;
+    function renderPosts() {
+        const container = document.getElementById('posts-container');
+        if(!container) return;
+        container.innerHTML = '';
 
-            const hList = post.heroeslist || [];
-            const isComp = post.iscompleted !== undefined ? post.iscompleted : post.isCompleted;
-            const bgClor = post.cardbgcolor || 'bg-amber-50';
-            const tTitle = post.tasktitle || '';
-            const cName = post.clientname || '';
-            const tTag = post.tasktag || '';
-            const tDetails = post.taskdetails || '';
-            const rwd = post.reward || '';
+        const allScores = countAllPoints();
 
-            const hasAccess = isAdmin || unlockedPosts[postId] || !post.password;
-
-            let actionButtonsHtml = '';
-            let managementSectionHtml = '';
-
-            if (isComp) {
-                actionButtonsHtml = `<span class="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl">已由 ${post.completed_by_name || '鄰里英雄'} 完成 🏮</span>`;
-            } else {
-                actionButtonsHtml = `
-                    <div class="flex gap-2">
-                        ${hasAccess ? `<button id="btn-open-complete-modal" class="bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs hover:bg-emerald-700 shadow-sm" data-post-id="${post.id}">✔️ 結案給分</button>` : ''}
-                        <button id="btn-open-join-detail" class="bg-orange-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs hover:bg-orange-700 shadow-sm" data-post-id="${post.id}">我要接單</button>
-                    </div>
-                `;
-            }
-
-            if (hasAccess) {
-                let participantsListHtml = hList.length === 0 
-                    ? `<p class="text-xs text-gray-400 py-4 col-span-2 text-center">目前尚無接單人，快來成為第一個吧！</p>`
-                    : hList.map(person => `
-                        <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                            <span class="font-bold text-gray-700 text-xs">🥷 接單人：${person.name}</span>
-                            <span class="font-bold text-gray-700 text-xs">📋 聯絡：${person.contact}</span>
-                            <button class="text-[11px] text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 font-bold btn-copy-contact" data-contact="${person.contact}">複製</button>
+        if (currentTab === 'skills') {
+            const leaderboardTarget = document.getElementById('leaderboard-target');
+            if(leaderboardTarget) {
+                const sortedHeroes = Object.keys(allScores)
+                    .map(k => ({ contact: k, ...allScores[k] }))
+                    .sort((a,b) => b.points - a.points)
+                    .slice(0, 3);
+                
+                if(sortedHeroes.length === 0) {
+                    leaderboardTarget.innerHTML = `<p class="leaderboard-empty-text">尚無得點紀錄，等待第一位英雄誕生！</p>`;
+                } else {
+                    const medals = ['🥇', '🥈', '🥉'];
+                    leaderboardTarget.innerHTML = sortedHeroes.map((h, i) => `
+                        <div class="leaderboard-item">
+                            <span class="leaderboard-item-info">${medals[i]} <strong>${h.name}</strong> </span>
+                            <span class="leaderboard-item-points">🪙 ${h.points} 分</span>
                         </div>
                     `).join('');
-
-                managementSectionHtml = `
-                    <div class="pt-6 border-t border-gray-100 space-y-3">
-                        <h3 class="text-xs font-bold text-emerald-800 tracking-widest uppercase flex items-center gap-1.5">
-                            <i data-lucide="unlock" class="w-3.5 h-3.5"></i><span>已接下委託的鄰里人名冊 (${hList.length})</span>
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">${participantsListHtml}</div>
-                    </div>
-                `;
-            } else {
-                managementSectionHtml = `
-                    <div class="pt-6 border-t border-gray-100 bg-stone-50/50 p-4 rounded-2xl border border-dashed border-stone-200 mt-4 text-center">
-                        <div class="flex flex-col items-center justify-center space-y-2">
-                            <i data-lucide="lock" class="w-6 h-6 text-stone-400"></i>
-                            <h4 class="text-xs font-bold text-stone-700">鄰里人名冊與結案功能已加密</h4>
-                            <p class="text-[11px] text-gray-400 max-w-sm">為了保護接單人的聯絡隱私，請輸入發布此案件時設定的「管理密碼」解鎖查看名冊與進行結案給分。</p>
-                            <div class="flex gap-2 max-w-xs w-full mt-2">
-                                <input type="password" id="inline-pwd-input" placeholder="輸入此案件管理密碼" class="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs tracking-wider focus:outline-none focus:border-orange-500">
-                                <button id="btn-verify-inline-pwd" class="px-4 py-1.5 bg-stone-800 text-white font-bold text-xs rounded-lg whitespace-nowrap hover:bg-stone-900" data-post-id="${post.id}">解鎖</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            targetDiv.innerHTML = `
-                <div class="max-w-3xl mx-auto bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-amber-100 w-full space-y-6">
-                    <div class="flex items-center justify-between pb-4 border-b border-gray-100">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-14 h-14 rounded-full ${bgClor} flex items-center justify-center text-3xl shadow-inner">${post.clientemoji || '🙋‍♂️'}</div>
-                            <div>
-                                <h1 class="text-2xl font-bold text-gray-900">${tTitle}</h1>
-                                <p class="text-sm text-gray-500 mt-1">發起委託：<span class="font-semibold text-gray-700">${cName}</span></p>
-                            </div>
-                        </div>
-                        <span class="text-xs px-3 py-1.5 rounded-full bg-orange-50 text-orange-700 font-bold">${tTag}</span>
-                    </div>
-                    <div class="space-y-2">
-                        <h3 class="text-xs font-bold text-gray-400 tracking-widest uppercase">委託細節說明</h3>
-                        <p class="text-base text-gray-700 leading-relaxed tracking-wide whitespace-pre-line">${tDetails}</p>
-                    </div>
-                    <div class="bg-amber-50/30 rounded-2xl p-4 grid grid-cols-2 gap-4 text-sm border border-amber-100">
-                        <div><span class="block text-xs text-gray-400 mb-0.5">💰 額外謝禮 </span><span class="font-bold text-amber-800">${rwd}</span></div>
-                    </div>
-                    <div class="pt-2 flex items-center justify-between">
-                        <div class="text-sm text-gray-600 flex items-center space-x-1"><i data-lucide="users" class="w-4 h-4 text-orange-600"></i><span>已有 <strong class="text-gray-900 font-bold text-base">${hList.length}</strong> 位鄰里人挺身而出</span></div>
-                        ${actionButtonsHtml}
-                    </div>
-                    ${managementSectionHtml}
-                </div>
-            `;
-
-            // 繫結詳情頁內動態按鈕事件
-            document.getElementById('btn-open-complete-modal')?.addEventListener('click', (e) => {
-                openCompleteModal(e.currentTarget.getAttribute('data-post-id'));
-            });
-            document.getElementById('btn-open-join-detail')?.addEventListener('click', (e) => {
-                openJoinModal(e.currentTarget.getAttribute('data-post-id'));
-            });
-            document.getElementById('btn-verify-inline-pwd')?.addEventListener('click', (e) => {
-                verifyPostPasswordInline(e.currentTarget.getAttribute('data-post-id'));
-            });
-            document.querySelectorAll('.btn-copy-contact').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    copyContactInfo(e.currentTarget.getAttribute('data-contact'));
-                });
-            });
-
-            setTimeout(() => { lucide.createIcons(); }, 100);
-        }
-
-        function openCompleteModal(postId) {
-            const post = posts.find(p => String(p.id) === String(postId));
-            if(!post) return;
-
-            document.getElementById('complete-post-id').value = postId;
-            const container = document.getElementById('heroes-select-container');
-            container.innerHTML = '';
-
-            const hList = post.heroeslist || [];
-            
-            const noOneDiv = document.createElement('label');
-            noOneDiv.className = "flex items-center space-x-3 bg-gray-50 p-3 rounded-xl border border-gray-200 cursor-pointer block hover:bg-gray-100";
-            noOneDiv.innerHTML = `
-                <input type="radio" name="selected-complete-hero" value="none" checked class="text-emerald-600 focus:ring-emerald-500">
-                <div>
-                    <p class="text-xs font-bold text-gray-700">❌ 沒有人完成 / 取消此委託</p>
-                    <p class="text-[10px] text-gray-400">（本案會封存，但不會發放萬事分）</p>
-                </div>
-            `;
-            container.appendChild(noOneDiv);
-
-            hList.forEach((hero, index) => {
-                const item = document.createElement('label');
-                item.className = "flex items-center space-x-3 bg-emerald-50/40 p-3 rounded-xl border border-emerald-100 cursor-pointer block hover:bg-emerald-50";
-                item.innerHTML = `
-                    <input type="radio" name="selected-complete-hero" value="${index}" class="text-emerald-600 focus:ring-emerald-500">
-                    <div>
-                        <p class="text-xs font-bold text-emerald-950">🥷 英雄：${hero.name}</p>
-                        <p class="text-[10px] text-emerald-700/70">聯絡管道：${hero.contact}</p>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-
-            document.getElementById('complete-modal').classList.remove('hidden');
-        }
-
-        function closeCompleteModal() { document.getElementById('complete-modal').classList.add('hidden'); }
-
-        async function submitCompleteTask() {
-            const postId = document.getElementById('complete-post-id').value;
-            const post = posts.find(p => String(p.id) === String(postId));
-            if(!post) return;
-
-            const selectedRadio = document.querySelector('input[name="selected-complete-hero"]:checked');
-            if(!selectedRadio) { alert("請選擇一項結案條件。"); return; }
-
-            let cName = null;
-            let cContact = null;
-
-            if(selectedRadio.value !== 'none') {
-                const heroIndex = parseInt(selectedRadio.value);
-                const chosenHero = post.heroeslist[heroIndex];
-                cName = chosenHero.name;
-                cContact = chosenHero.contact;
-            }
-
-            try {
-                const { error } = await client
-                    .from(POSTS_TABLE)
-                    .update({ 
-                        iscompleted: true,
-                        completed_by_name: cName,
-                        completed_by_contact: cContact
-                    })
-                    .eq('id', postId);
-                
-                if (error) throw error;
-                
-                closeCompleteModal();
-                if(currentViewingPostId === postId) backToHomeList();
-                await fetchPostsFromSupabase();
-                await updateUserPointsInSupabase(cContact, cName, 1);
-                if(cName) {
-                    alert(`🏮 結案成功！恭喜【${cName}】獲得了 1 點萬事分！`);
-                } else {
-                    alert("🏮 委託已關閉結案。");
                 }
-            } catch (err) { alert("更新結案狀態失敗: " + err.message); }
+            }
         }
 
-        async function handleJoinSubmit(event) {
-            event.preventDefault();
-            const postId = document.getElementById('join-post-id').value;
-            const newHero = {
-                name: document.getElementById('join-name').value.trim(),
-                contact: document.getElementById('join-ig').value.trim()
-            };
+        const filterBarContainer = document.getElementById('skill-filter-bar-container');
 
-            const post = posts.find(p => String(p.id) === String(postId));
-            if (!post) return;
-
-            const updatedHeroes = [...(post.heroeslist || []), newHero];
-
-            try {
-                const { error } = await client.from(POSTS_TABLE).update({ heroeslist: updatedHeroes }).eq('id', postId);
-                if (error) throw error;
-                closeJoinModal();
-                await fetchPostsFromSupabase();
-                alert("🎉 恭喜！您已成功接單，請等候發布者與您聯繫。");
-            } catch (err) { alert("接受委託失敗: " + err.message); }
-        }
-
-        async function handleFormSubmit(event) {
-            event.preventDefault();
-            
-            const clientContact = document.getElementById('clientContactInput').value.trim();
-            const clientName = document.getElementById('clientNameInput').value.trim();
-            
-            const allScores = countAllPoints();
-            const userScore = allScores[clientContact]?.points || 0;
-            
-            if (userScore <= -2) {
-                alert(`⚠️ 您的萬事分目前為 ${userScore} 分。每個聯絡方式最多負 2 點萬事分，請先幫手完成其他委託賺取積分，再來發布新委託！`);
+        if (currentTab === 'skills') {
+            if (skills.length === 0) {
+                if(filterBarContainer) filterBarContainer.innerHTML = '';
+                container.innerHTML = '<p class="container-empty-hint">目前尚無登記鄰里人技能。</p>';
                 return;
             }
 
-            const rawTagInput = document.getElementById('taskTagInput').value.trim();
-            const formattedTaskTag = rawTagInput
-                ? rawTagInput.split(/\s+/).map(t => (t.startsWith('#') ? t : `#${t}`)).join(' ')
-                : '#一般委託';
-
-            const bgColors = ['bg-amber-50', 'bg-orange-50', 'bg-yellow-50', 'bg-stone-100'];
-            const newPost = {
-                tasktitle: document.getElementById('taskTitleInput').value.trim(), 
-                clientname: clientName || '神祕鄰里人',
-                clientcontact: clientContact,
-                tasktag: formattedTaskTag,
-                taskdetails: document.getElementById('taskDetailsInput').value.trim(),
-                reward: document.getElementById('rewardInput').value.trim(),
-                clientemoji: document.getElementById('selected-emoji').value,
-                cardbgcolor: bgColors[Math.floor(Math.random() * bgColors.length)],
-                iscompleted: false,
-                heroeslist: [],
-                password: document.getElementById('postPasswordInput').value.trim()
-            };
-
-            try {
-                const { error } = await client.from(POSTS_TABLE).insert([newPost]);
-                if (error) throw error;
-
-                await updateUserPointsInSupabase(clientContact, clientName, -1);
-
-                closeUploadModal();
-                setupRandomDefaultAvatar();
-                await fetchPostsFromSupabase();
-
-                alert(`✨ 委託發布成功！已為您扣除 1 點萬事分（您目前的萬事分為 ${userScore - 1} 分）。請記好您的管理密碼！`);
-            } catch (err) { 
-                alert("發布新委託失敗: " + err.message); 
-            }
-        }
-
-        async function handleSkillSubmit(event) {
-            event.preventDefault();
-            
-            const data = {
-                name: document.getElementById('skillNameInput').value.trim(),
-                skilltag: document.getElementById('skillTagInput').value.trim(),
-                learning: document.getElementById('skillLearningInput').value.trim(),
-                contact: document.getElementById('skillContactInput').value.trim(),
-                description: document.getElementById('skillDescInput').value.trim(),
-                emoji: document.getElementById('skill-selected-emoji').value
-            };
-
-            if (!data.name || !data.contact) {
-                alert("請填寫您的稱呼與聯絡管道！");
-                return;
-            }
-
-            try {
-                const { error } = await client.from(TABLE_NAME).insert([data]);
-                if (error) throw error;
-                
-                await updateUserPointsInSupabase(data.contact, data.name, +1);
-
-                closeSkillModal();
-                await fetchSkillsFromSupabase();
-                await fetchAllUserRecordsFromSupabase();
-
-                alert(`✨ 成功登記技能名冊！已同步您的資料並為您增加 1 點萬事分！`);
-            } catch (err) { 
-                alert("儲存技能失敗: " + err.message); 
-            }
-        }
-
-        function copyContactInfo(text) {
-            if(!text) return;
-            let cleanText = text.trim();
-            const textArea = document.createElement("textarea");
-            textArea.value = cleanText;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            showToast(`📋 已成功複製聯絡資訊：「${cleanText}」`);
-            document.body.removeChild(textArea);
-        }
-
-        function showToast(message) {
-            const toast = document.getElementById('toast-message');
-            if(!toast) return;
-            toast.innerText = message;
-            toast.classList.remove('hidden');
-            toast.classList.add('toast-popup');
-            setTimeout(() => { toast.classList.add('hidden'); toast.classList.remove('toast-popup'); }, 2300);
-        }
-
-        async function deletePost(postId) { 
-            if (confirm("確定要從資料庫中永久刪除此委託嗎？")) { 
-                try {
-                    const { error } = await client.from(POSTS_TABLE).delete().eq('id', postId);
-                    if (error) throw error;
-                    if (currentViewingPostId === postId) backToHomeList();
-                    await fetchPostsFromSupabase();
-                } catch (err) { alert("刪除委託失敗: " + err.message); }
-            } 
-        }
-
-        async function deleteSkill(skillId) { 
-            if (confirm("確定要移除此鄰里人技能檔案嗎？")) { 
-                try {
-                    const { error } = await client.from(TABLE_NAME).delete().eq('id', skillId);
-                    if (error) throw error;
-                    await fetchSkillsFromSupabase();
-                } catch (err) { alert("移除技能失敗: " + err.message); }
-            } 
-        }
-
-        function toggleEmojiBank(mode) { 
-            document.getElementById(mode === 'post' ? 'emoji-bank-post' : 'emoji-bank-skill').classList.toggle('hidden'); 
-        }
-
-        function selectEmoji(emoji, mode) {
-            if (mode === 'post') {
-                document.getElementById('selected-emoji').value = emoji;
-                document.getElementById('current-avatar-preview').innerText = emoji;
-            } else {
-                document.getElementById('skill-selected-emoji').value = emoji;
-                document.getElementById('skill-avatar-preview').innerText = emoji;
-            }
-            toggleEmojiBank(mode);
-        }
-
-        function setupRandomDefaultAvatar() {
-            const initialEmojis = ['🙋‍♂️', '🙋‍♀️', '🧑‍💻', '👩‍🎨', '🐱', '🦊'];
-            const randomEmoji = initialEmojis[Math.floor(Math.random() * initialEmojis.length)];
-            if(document.getElementById('selected-emoji')) document.getElementById('selected-emoji').value = randomEmoji;
-            if(document.getElementById('current-avatar-preview')) document.getElementById('current-avatar-preview').innerText = randomEmoji;
-        }
-        
-        function toggleAdminNavbar() { 
-            document.getElementById('admin-navbar')?.classList.toggle('hidden'); 
-        }
-
-        async function handleAdminLogin() { 
-            const inputPwd = document.getElementById('admin-password-input').value.trim(); 
-            if (!inputPwd) {
-                alert("請輸入管理密碼！");
-                return;
-            }
-
-            const { error } = await client.auth.signInWithPassword({ 
-                email: 'admin@studio.local', 
-                password: inputPwd 
+            let allTagsSet = new Set();
+            skills.forEach(skill => {
+                if (skill.skilltag) {
+                    skill.skilltag.trim().split(/\s+/).forEach(t => allTagsSet.add(t.startsWith('#') ? t : `#${t}`));
+                }
+                if (skill.learning && skill.learning !== '/') {
+                    skill.learning.trim().split(/\s+/).forEach(t => allTagsSet.add(t.startsWith('#') ? t : `#${t}`));
+                }
             });
 
-            if (error) {
-                alert("❌ 認證登入失敗：" + error.message);
-            } else {
-                alert("🟢 主理人認證成功！");
-                document.getElementById('admin-password-input').value = '';
-                document.getElementById('admin-navbar')?.classList.remove('hidden');
+            if(filterBarContainer) {
+                filterBarContainer.classList.remove('hidden');
+                let filterHtml = `
+                    <div style="width: 100%; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; white-space: nowrap;">
+                        <button class="filter-tag-btn" data-tag="all" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 16px; border: 1px solid #ddd; background: ${currentTagFilter === 'all' ? '#333' : '#fff'}; color: ${currentTagFilter === 'all' ? '#fff' : '#333'}; cursor: pointer;">全部顯示</button>
+                `;
+                allTagsSet.forEach(tag => {
+                    const isActive = currentTagFilter === tag;
+                    filterHtml += `<button class="filter-tag-btn" data-tag="${tag}" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 16px; border: 1px solid #ddd; background: ${isActive ? '#333' : '#fff'}; color: ${isActive ? '#fff' : '#333'}; cursor: pointer;">${tag}</button>`;
+                });
+                filterHtml += `</div>`;
+                filterBarContainer.innerHTML = filterHtml;
             }
+
+            const filteredSkills = skills.filter(skill => {
+                if (currentTagFilter === 'all') return true;
+                const tText = (skill.skilltag || '') + ' ' + (skill.learning || '');
+                return tText.includes(currentTagFilter.replace('#', ''));
+            });
+
+            if (filteredSkills.length === 0) {
+                container.innerHTML = '<p class="container-empty-hint">沒有找到符合此標籤的鄰里人。</p>';
+                return;
+            }
+
+            filteredSkills.forEach(skill => {
+                const card = document.createElement('div');
+                card.className = "task-card";
+                
+                const adminTools = isAdmin ? `
+                    <div class="card-admin-tools">
+                        <button class="btn-card-delete" data-skill-id="${skill.id}">🗑️</button>
+                    </div>` : '';
+                
+                const myPoint = allScores[skill.contact?.trim()]?.points || 0;
+
+                const formattedTags = formatHashtags(skill.skilltag);
+                const formattedLearning = formatHashtags(skill.learning);
+     
+                const skillTagBadge = skill.skilltag && skill.skilltag !== '/' ? 
+                    `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-Top: 0.5rem">📜 應用中：${formattedTags}</span>` : '';
+                const learningBadge = skill.learning && skill.learning !== '/' ? 
+                    `<span style="background: #f3f4f6; color: #4b5563; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-Top: 0.5rem;">📚 研習中：${formattedLearning}</span>` : '';
+
+                card.innerHTML = `
+                    <div>
+                        <div class="task-card-header">
+                            <div class="avatar-circle-stone">${skill.emoji || '🧑‍🎨'}</div>
+                            <div style="flex: 1;">
+                                <div class="title-with-badge">
+                                    <h3 class="task-card-title">${skill.name}</h3> 
+                                    <span class="point-badge">🪙 ${myPoint}</span>
+                                </div>
+                            </div>
+                        </div>
+                        ${adminTools}
+                        ${skillTagBadge}
+                        <br>
+                        ${learningBadge}
+                    </div>
+                    <div class="task-card-footer" style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+                        <p class="task-card-description">${skill.description}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        } else {
+            const isCompletedTarget = (currentTab === 'completed');
+            
+            const baseFilteredPosts = posts.filter(post => {
+                const compVal = post.iscompleted !== undefined ? post.iscompleted : post.isCompleted;
+                return !!compVal === isCompletedTarget;
+            });
+
+            let postTagsSet = new Set();
+            baseFilteredPosts.forEach(post => {
+                if (post.tasktag) {
+                    post.tasktag.trim().split(/\s+/).forEach(t => postTagsSet.add(t.startsWith('#') ? t : `#${t}`));
+                }
+            });
+
+            if (filterBarContainer && baseFilteredPosts.length > 0) {
+                filterBarContainer.classList.remove('hidden');
+                let filterHtml = `
+                    <div style="width: 100%; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; white-space: nowrap;">
+                        <button class="filter-tag-btn" data-tag="all" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 16px; border: 1px solid #ddd; background: ${currentTagFilter === 'all' ? '#333' : '#fff'}; color: ${currentTagFilter === 'all' ? '#fff' : '#333'}; cursor: pointer;">全部顯示</button>
+                `;
+                postTagsSet.forEach(tag => {
+                    const isActive = currentTagFilter === tag;
+                    filterHtml += `<button class="filter-tag-btn" data-tag="${tag}" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 16px; border: 1px solid #ddd; background: ${isActive ? '#333' : '#fff'}; color: ${isActive ? '#fff' : '#333'}; cursor: pointer;">${tag}</button>`;
+                });
+                filterHtml += `</div>`;
+                filterBarContainer.innerHTML = filterHtml;
+            } else if (filterBarContainer) {
+                filterBarContainer.classList.add('hidden');
+            }
+
+            const filteredPosts = baseFilteredPosts.filter(post => {
+                if (currentTagFilter === 'all') return true;
+                const tText = post.tasktag || '';
+                return tText.includes(currentTagFilter.replace('#', ''));
+            });
+
+            if (filteredPosts.length === 0) {
+                container.innerHTML = '<p class="container-empty-hint">此分類目前沒有符合此標籤的委託案件。</p>';
+                return;
+            }
+
+            filteredPosts.forEach(post => {
+                const hList = post.heroeslist || [];
+                const count = hList.length;
+                const card = document.createElement('div');
+                
+                const cEmoji = post.clientemoji || '🙋‍♂️';
+                const tTitle = post.tasktitle || '';
+                const cName = post.clientname || '';
+                const tTag = formatHashtags(post.tasktag);
+                const tDetails = post.taskdetails || '';
+                const rwd = post.reward || '';
+                const isComp = post.iscompleted !== undefined ? post.iscompleted : post.isCompleted;
+
+                card.className = "task-card clickable-group card-post-item";
+                card.setAttribute('data-post-id', post.id);
+
+                let adminActionHtml = '';
+                if (isAdmin) {
+                    adminActionHtml += `<button class="btn-card-delete" data-delete-post-id="${post.id}">🗑️</button>`;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="task-card-header">
+                            <div class="avatar-circle-orange">${cEmoji}</div>
+                            <div style="flex: 1; min-width: 0;">
+                                <h3 class="task-card-title text-ellipsis-2line">${tTitle}</h3>
+                                <p class="task-card-subtitle">委託人：${cName} • ${count}人已接單</p>
+                            </div>
+                        </div>
+                        <div class="card-admin-tools">${adminActionHtml}</div>
+                        <div style="margin-bottom: 0.5rem;">
+                            <span class="tag-orange">${tTag}</span>
+                        </div>
+                        <p class="task-card-description text-ellipsis-5line">${tDetails}</p>
+                    </div>
+                    <div class="task-card-footer">
+                        <div class="reward-info-text">
+                            <span class="reward-highlight">💰 報酬：${rwd}</span> • <span>${post.timeAgo}</span>
+                        </div>
+                        ${isComp 
+                            ? `<span class="badge-status-success">
+                                <span class="status-success-title">圓滿解決 🏮</span>
+                                <span class="status-success-subtitle">貢獻者: ${post.completed_by_name || '無'}</span>
+                               </span>`
+                            : `<button class="btn-base btn-orange btn-join-action" data-join-post-id="${post.id}">接受委託</button>`
+                        }
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
-        async function handleAdminLogout() { 
-            try {
-                await client.auth.signOut();
-                isAdmin = false;
-                updateAdminUI();
-                switchTab(currentTab);
-                alert("已成功登出主理人模式。");
-            } catch (err) {
-                console.error("登出失敗:", err.message);
-            }
-        }
+        bindDynamicElementEvents();
+        setTimeout(() => { lucide.createIcons(); }, 100);
+    }
 
-        function updateAdminUI() {
-            const loggedOut = document.getElementById('admin-logged-out');
-            const loggedIn = document.getElementById('admin-logged-in');
-            const globalBadge = document.getElementById('global-admin-badge');
-            const adminNavbar = document.getElementById('admin-navbar');
+    function bindDynamicElementEvents() {
+        document.querySelectorAll('.tag-click-trigger').forEach(el => {
+            el.onclick = (e) => {
+                e.stopPropagation();
+                filterByTag(e.currentTarget.getAttribute('data-tag'));
+            };
+        });
 
-            if (isAdmin) { 
-                loggedOut?.classList.add('hidden'); 
-                loggedIn?.classList.remove('hidden'); 
-                globalBadge?.classList.remove('hidden'); 
-                adminNavbar?.classList.remove('hidden'); // 登入後自動展開管理面板
-            } else { 
-                loggedOut?.classList.remove('hidden'); 
-                loggedIn?.classList.add('hidden'); 
-                globalBadge?.classList.add('hidden'); 
-                adminNavbar?.classList.add('hidden');
-            }
-        }
+        document.querySelectorAll('.filter-tag-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                filterByTag(e.currentTarget.getAttribute('data-tag'));
+            };
+        });
+
+        document.querySelectorAll('.card-post-item').forEach(card => {
+            card.onclick = (e) => {
+                if (!e.target.closest('button')) {
+                    goToPostDetail(card.getAttribute('data-post-id'));
+                }
+            };
+        });
+
+        document.querySelectorAll('.btn-join-action').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                openJoinModal(e.currentTarget.getAttribute('data-join-post-id'));
+            };
+        });
+
+        document.querySelectorAll('[data-skill-id]').forEach(btn => {
+            btn.onclick = (e) => {
+                deleteSkill(e.currentTarget.getAttribute('data-skill-id'));
+            };
+        });
+
+        document.querySelectorAll('[data-delete-post-id]').forEach(btn => {
+            btn.onclick = (e) => {
+                deletePost(e.currentTarget.getAttribute('data-delete-post-id'));
+            };
+        });
+    }
+
+    function goToPostDetail(postId) {
+        currentViewingPostId = postId;
+        document.getElementById('main-content-layout').classList.add('hidden');
+        document.getElementById('header-upload-btn')?.classList.add('hidden');
+        document.getElementById('header-skill-btn')?.classList.add('hidden');
+        document.getElementById('single-post-layout').classList.remove('hidden');
+        renderSinglePostView(postId);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function backToHomeList() {
+        currentViewingPostId = null;
+        document.getElementById('single-post-layout').classList.add('hidden');
+        document.getElementById('main-content-layout').classList.remove('hidden');
+        switchTab(currentTab); 
+    }
+
+    function verifyPostPasswordInline(postId) {
+        const post = posts.find(p => String(p.id) === String(postId));
+        if(!post) return;
+        const inputVal = document.getElementById('inline-pwd-input').value.trim();
         
-        function openJoinModal(postId) { document.getElementById('join-post-id').value = postId; document.getElementById('join-modal').classList.remove('hidden'); }
-        function closeJoinModal() { document.getElementById('join-modal').classList.add('hidden'); document.getElementById('join-form').reset(); }
-        function openUploadModal() { document.getElementById('upload-modal').classList.remove('hidden'); }
-        function closeUploadModal() { document.getElementById('post-form').reset(); document.getElementById('upload-modal').classList.add('hidden'); }
-        function openSkillModal() { document.getElementById('skill-modal').classList.remove('hidden'); }
-        function closeSkillModal() { document.getElementById('skill-form').reset(); document.getElementById('skill-modal').classList.add('hidden'); }
+        if(inputVal === post.password || isAdmin) {
+            unlockedPosts[postId] = true;
+            renderSinglePostView(postId);
+        } else {
+            alert("❌ 密碼錯誤！無法解鎖管理區塊。");
+        }
+    }
 
-        function calculateTimeAgo(timestamp) {
-            if (!timestamp) return "剛剛";
-            const diffMs = new Date() - new Date(timestamp);
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMins / 60);
-            const diffDays = Math.floor(diffHours / 24);
-            if (diffMins < 1) return "剛剛";
-            if (diffMins < 60) return `${diffMins} 分鐘前`;
-            if (diffHours < 24) return `${diffHours} 小時前`;
-            return `${diffDays} 天前`;
+    function renderSinglePostView(postId) {
+        const post = posts.find(p => String(p.id) === String(postId));
+        const targetDiv = document.getElementById('single-post-render-target');
+        if (!post || !targetDiv) return;
+
+        const hList = post.heroeslist || [];
+        const isComp = post.iscompleted !== undefined ? post.iscompleted : post.isCompleted;
+        const bgClor = post.cardbgcolor || 'bg-amber-50';
+        const tTitle = post.tasktitle || '';
+        const cName = post.clientname || '';
+        const tTag = post.tasktag || '';
+        const tDetails = post.taskdetails || '';
+        const rwd = post.reward || '';
+
+        const hasAccess = isAdmin || unlockedPosts[postId] || !post.password;
+
+        let actionButtonsHtml = '';
+        let managementSectionHtml = '';
+
+        if (isComp) {
+            actionButtonsHtml = `<span class="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl">已由 ${post.completed_by_name || '鄰里英雄'} 完成 🏮</span>`;
+        } else {
+            actionButtonsHtml = `
+                <div class="flex gap-2">
+                    ${hasAccess ? `<button id="btn-open-complete-modal" class="bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs hover:bg-emerald-700 shadow-sm" data-post-id="${post.id}">✔️ 結案給分</button>` : ''}
+                    <button id="btn-open-join-detail" class="bg-orange-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs hover:bg-orange-700 shadow-sm" data-post-id="${post.id}">我要接單</button>
+                </div>
+            `;
         }
 
-        async function adminAdjustPoints(change) {
-            if (!isAdmin) {
-                alert("🔒 只有管理員可以調整萬事分！");
-                return;
+        if (hasAccess) {
+            let participantsListHtml = hList.length === 0 
+                ? `<p class="text-xs text-gray-400 py-4 col-span-2 text-center">目前尚無接單人，快來成為第一個吧！</p>`
+                : hList.map(person => `
+                    <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                        <span class="font-bold text-gray-700 text-xs">🥷 接單人：${person.name}</span>
+                        <span class="font-bold text-gray-700 text-xs">📋 聯絡：${person.contact}</span>
+                        <button class="text-[11px] text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 font-bold btn-copy-contact" data-contact="${person.contact}">複製</button>
+                    </div>
+                `).join('');
+
+            managementSectionHtml = `
+                <div class="pt-6 border-t border-gray-100 space-y-3">
+                    <h3 class="text-xs font-bold text-emerald-800 tracking-widest uppercase flex items-center gap-1.5">
+                        <i data-lucide="unlock" class="w-3.5 h-3.5"></i><span>已接下委託的鄰里人名冊 (${hList.length})</span>
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">${participantsListHtml}</div>
+                </div>
+            `;
+        } else {
+            managementSectionHtml = `
+                <div class="pt-6 border-t border-gray-100 bg-stone-50/50 p-4 rounded-2xl border border-dashed border-stone-200 mt-4 text-center">
+                    <div class="flex flex-col items-center justify-center space-y-2">
+                        <i data-lucide="lock" class="w-6 h-6 text-stone-400"></i>
+                        <h4 class="text-xs font-bold text-stone-700">鄰里人名冊與結案功能已加密</h4>
+                        <p class="text-[11px] text-gray-400 max-w-sm">為了保護接單人的聯絡隱私，請輸入發布此案件時設定的「管理密碼」解鎖查看名冊與進行結案給分。</p>
+                        <div class="flex gap-2 max-w-xs w-full mt-2">
+                            <input type="password" id="inline-pwd-input" placeholder="輸入此案件管理密碼" class="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs tracking-wider focus:outline-none focus:border-orange-500">
+                            <button id="btn-verify-inline-pwd" class="px-4 py-1.5 bg-stone-800 text-white font-bold text-xs rounded-lg whitespace-nowrap hover:bg-stone-900" data-post-id="${post.id}">解鎖</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        targetDiv.innerHTML = `
+            <div class="max-w-3xl mx-auto bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-amber-100 w-full space-y-6">
+                <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-14 h-14 rounded-full ${bgClor} flex items-center justify-center text-3xl shadow-inner">${post.clientemoji || '🙋‍♂️'}</div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">${tTitle}</h1>
+                            <p class="text-sm text-gray-500 mt-1">發起委託：<span class="font-semibold text-gray-700">${cName}</span></p>
+                        </div>
+                    </div>
+                    <span class="text-xs px-3 py-1.5 rounded-full bg-orange-50 text-orange-700 font-bold">${tTag}</span>
+                </div>
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-gray-400 tracking-widest uppercase">委託細節說明</h3>
+                    <p class="text-base text-gray-700 leading-relaxed tracking-wide whitespace-pre-line">${tDetails}</p>
+                </div>
+                <div class="bg-amber-50/30 rounded-2xl p-4 grid grid-cols-2 gap-4 text-sm border border-amber-100">
+                    <div><span class="block text-xs text-gray-400 mb-0.5">💰 額外謝禮 </span><span class="font-bold text-amber-800">${rwd}</span></div>
+                </div>
+                <div class="pt-2 flex items-center justify-between">
+                    <div class="text-sm text-gray-600 flex items-center space-x-1"><i data-lucide="users" class="w-4 h-4 text-orange-600"></i><span>已有 <strong class="text-gray-900 font-bold text-base">${hList.length}</strong> 位鄰里人挺身而出</span></div>
+                    ${actionButtonsHtml}
+                </div>
+                ${managementSectionHtml}
+            </div>
+        `;
+
+        document.getElementById('btn-open-complete-modal')?.addEventListener('click', (e) => {
+            openCompleteModal(e.currentTarget.getAttribute('data-post-id'));
+        });
+        document.getElementById('btn-open-join-detail')?.addEventListener('click', (e) => {
+            openJoinModal(e.currentTarget.getAttribute('data-post-id'));
+        });
+        document.getElementById('btn-verify-inline-pwd')?.addEventListener('click', (e) => {
+            verifyPostPasswordInline(e.currentTarget.getAttribute('data-post-id'));
+        });
+        document.querySelectorAll('.btn-copy-contact').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                copyContactInfo(e.currentTarget.getAttribute('data-contact'));
+            });
+        });
+
+        setTimeout(() => { lucide.createIcons(); }, 100);
+    }
+
+    function openCompleteModal(postId) {
+        const post = posts.find(p => String(p.id) === String(postId));
+        if(!post) return;
+
+        document.getElementById('complete-post-id').value = postId;
+        const container = document.getElementById('heroes-select-container');
+        container.innerHTML = '';
+
+        const hList = post.heroeslist || [];
+        
+        const noOneDiv = document.createElement('label');
+        noOneDiv.className = "flex items-center space-x-3 bg-gray-50 p-3 rounded-xl border border-gray-200 cursor-pointer block hover:bg-gray-100";
+        noOneDiv.innerHTML = `
+            <input type="radio" name="selected-complete-hero" value="none" checked class="text-emerald-600 focus:ring-emerald-500">
+            <div>
+                <p class="text-xs font-bold text-gray-700">❌ 沒有人完成 / 取消此委託</p>
+                <p class="text-[10px] text-gray-400">（本案會封存，但不會發放萬事分）</p>
+            </div>
+        `;
+        container.appendChild(noOneDiv);
+
+        hList.forEach((hero, index) => {
+            const item = document.createElement('label');
+            item.className = "flex items-center space-x-3 bg-emerald-50/40 p-3 rounded-xl border border-emerald-100 cursor-pointer block hover:bg-emerald-50";
+            item.innerHTML = `
+                <input type="radio" name="selected-complete-hero" value="${index}" class="text-emerald-600 focus:ring-emerald-500">
+                <div>
+                    <p class="text-xs font-bold text-emerald-950">🥷 英雄：${hero.name}</p>
+                    <p class="text-[10px] text-emerald-700/70">聯絡管道：${hero.contact}</p>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+
+        document.getElementById('complete-modal').classList.remove('hidden');
+    }
+
+    function closeCompleteModal() { document.getElementById('complete-modal').classList.add('hidden'); }
+
+    async function submitCompleteTask() {
+        const postId = document.getElementById('complete-post-id').value;
+        const post = posts.find(p => String(p.id) === String(postId));
+        if(!post) return;
+
+        const selectedRadio = document.querySelector('input[name="selected-complete-hero"]:checked');
+        if(!selectedRadio) { alert("請選擇一項結案條件。"); return; }
+
+        let cName = null;
+        let cContact = null;
+
+        if(selectedRadio.value !== 'none') {
+            const heroIndex = parseInt(selectedRadio.value);
+            const chosenHero = post.heroeslist[heroIndex];
+            cName = chosenHero.name;
+            cContact = chosenHero.contact;
+        }
+
+        try {
+            const { error } = await client
+                .from(POSTS_TABLE)
+                .update({ 
+                    iscompleted: true,
+                    completed_by_name: cName,
+                    completed_by_contact: cContact
+                })
+                .eq('id', postId);
+            
+            if (error) throw error;
+            
+            closeCompleteModal();
+            if(currentViewingPostId === postId) backToHomeList();
+            await fetchPostsFromSupabase();
+            await updateUserPointsInSupabase(cContact, cName, 1);
+            if(cName) {
+                alert(`🏮 結案成功！恭喜【${cName}】獲得了 1 點萬事分！`);
+            } else {
+                alert("🏮 委託已關閉結案。");
             }
+        } catch (err) { alert("更新結案狀態失敗: " + err.message); }
+    }
 
-            const contact = document.getElementById('admin-target-contact').value.trim();
-            const name = document.getElementById('admin-target-name').value.trim();
+    async function handleJoinSubmit(event) {
+        event.preventDefault();
+        const postId = document.getElementById('join-post-id').value;
+        const newHero = {
+            name: document.getElementById('join-name').value.trim(),
+            contact: document.getElementById('join-ig').value.trim()
+        };
 
-            if (!contact) {
-                alert("請輸入目標聯絡方式 (IG/電話)！");
-                return;
-            }
+        const post = posts.find(p => String(p.id) === String(postId));
+        if (!post) return;
 
+        const updatedHeroes = [...(post.heroeslist || []), newHero];
+
+        try {
+            const { error } = await client.from(POSTS_TABLE).update({ heroeslist: updatedHeroes }).eq('id', postId);
+            if (error) throw error;
+            closeJoinModal();
+            await fetchPostsFromSupabase();
+            alert("🎉 恭喜！您已成功接單，請等候發布者與您聯繫。");
+        } catch (err) { alert("接受委託失敗: " + err.message); }
+    }
+
+    async function handleFormSubmit(event) {
+        event.preventDefault();
+        
+        const clientContact = document.getElementById('clientContactInput').value.trim();
+        const clientName = document.getElementById('clientNameInput').value.trim();
+        
+        const allScores = countAllPoints();
+        const userScore = allScores[clientContact]?.points || 0;
+        
+        if (userScore <= -2) {
+            alert(`⚠️ 您的萬事分目前為 ${userScore} 分。每個聯絡方式最多負 2 點萬事分，請先幫手完成其他委託賺取積分，再來發布新委託！`);
+            return;
+        }
+
+        const rawTagInput = document.getElementById('taskTagInput').value.trim();
+        const formattedTaskTag = rawTagInput
+            ? rawTagInput.split(/\s+/).map(t => (t.startsWith('#') ? t : `#${t}`)).join(' ')
+            : '#一般委託';
+
+        const bgColors = ['bg-amber-50', 'bg-orange-50', 'bg-yellow-50', 'bg-stone-100'];
+        const newPost = {
+            tasktitle: document.getElementById('taskTitleInput').value.trim(), 
+            clientname: clientName || '神祕鄰里人',
+            clientcontact: clientContact,
+            tasktag: formattedTaskTag,
+            taskdetails: document.getElementById('taskDetailsInput').value.trim(),
+            reward: document.getElementById('rewardInput').value.trim(),
+            clientemoji: document.getElementById('selected-emoji').value,
+            cardbgcolor: bgColors[Math.floor(Math.random() * bgColors.length)],
+            iscompleted: false,
+            heroeslist: [],
+            password: document.getElementById('postPasswordInput').value.trim()
+        };
+
+        try {
+            const { error } = await client.from(POSTS_TABLE).insert([newPost]);
+            if (error) throw error;
+
+            await updateUserPointsInSupabase(clientContact, clientName, -1);
+
+            closeUploadModal();
+            setupRandomDefaultAvatar();
+            await fetchPostsFromSupabase();
+
+            alert(`✨ 委託發布成功！已為您扣除 1 點萬事分（您目前的萬事分為 ${userScore - 1} 分）。請記好您的管理密碼！`);
+        } catch (err) { 
+            alert("發布新委託失敗: " + err.message); 
+        }
+    }
+
+    async function handleSkillSubmit(event) {
+        event.preventDefault();
+        
+        const data = {
+            name: document.getElementById('skillNameInput').value.trim(),
+            skilltag: document.getElementById('skillTagInput').value.trim(),
+            learning: document.getElementById('skillLearningInput').value.trim(),
+            contact: document.getElementById('skillContactInput').value.trim(),
+            description: document.getElementById('skillDescInput').value.trim(),
+            emoji: document.getElementById('skill-selected-emoji').value
+        };
+
+        if (!data.name || !data.contact) {
+            alert("請填寫您的稱呼與聯絡管道！");
+            return;
+        }
+
+        try {
+            const { error } = await client.from(TABLE_NAME).insert([data]);
+            if (error) throw error;
+            
+            await updateUserPointsInSupabase(data.contact, data.name, +1);
+
+            closeSkillModal();
+            await fetchSkillsFromSupabase();
+            await fetchAllUserRecordsFromSupabase();
+
+            alert(`✨ 成功登記技能名冊！已同步您的資料並為您增加 1 點萬事分！`);
+        } catch (err) { 
+            alert("儲存技能失敗: " + err.message); 
+        }
+    }
+
+    function copyContactInfo(text) {
+        if(!text) return;
+        let cleanText = text.trim();
+        const textArea = document.createElement("textarea");
+        textArea.value = cleanText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        showToast(`📋 已成功複製聯絡資訊：「${cleanText}」`);
+        document.body.removeChild(textArea);
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast-message');
+        if(!toast) return;
+        toast.innerText = message;
+        toast.classList.remove('hidden');
+        toast.classList.add('toast-popup');
+        setTimeout(() => { toast.classList.add('hidden'); toast.classList.remove('toast-popup'); }, 2300);
+    }
+
+    async function deletePost(postId) { 
+        if (confirm("確定要從資料庫中永久刪除此委託嗎？")) { 
             try {
-                await updateUserPointsInSupabase(contact, name, change);
-                alert(`✅ 成功為【${contact}】${change > 0 ? '增加' : '扣除'} 1 點萬事分！`);
-                document.getElementById('admin-target-contact').value = '';
-                document.getElementById('admin-target-name').value = '';
-            } catch (err) {
-                alert("調整萬事分失敗: " + err.message);
-            }
+                const { error } = await client.from(POSTS_TABLE).delete().eq('id', postId);
+                if (error) throw error;
+                if (currentViewingPostId === postId) backToHomeList();
+                await fetchPostsFromSupabase();
+            } catch (err) { alert("刪除委託失敗: " + err.message); }
+        } 
+    }
+
+    async function deleteSkill(skillId) { 
+        if (confirm("確定要移除此鄰里人技能檔案嗎？")) { 
+            try {
+                const { error } = await client.from(TABLE_NAME).delete().eq('id', skillId);
+                if (error) throw error;
+                await fetchSkillsFromSupabase();
+            } catch (err) { alert("移除技能失敗: " + err.message); }
+        } 
+    }
+
+    function toggleEmojiBank(mode) { 
+        document.getElementById(mode === 'post' ? 'emoji-bank-post' : 'emoji-bank-skill').classList.toggle('hidden'); 
+    }
+
+    function selectEmoji(emoji, mode) {
+        if (mode === 'post') {
+            document.getElementById('selected-emoji').value = emoji;
+            document.getElementById('current-avatar-preview').innerText = emoji;
+        } else {
+            document.getElementById('skill-selected-emoji').value = emoji;
+            document.getElementById('skill-avatar-preview').innerText = emoji;
         }
-    </script>
+        toggleEmojiBank(mode);
+    }
+
+    function setupRandomDefaultAvatar() {
+        const initialEmojis = ['🙋‍♂️', '🙋‍♀️', '🧑‍💻', '👩‍🎨', '🐱', '🦊'];
+        const randomEmoji = initialEmojis[Math.floor(Math.random() * initialEmojis.length)];
+        if(document.getElementById('selected-emoji')) document.getElementById('selected-emoji').value = randomEmoji;
+        if(document.getElementById('current-avatar-preview')) document.getElementById('current-avatar-preview').innerText = randomEmoji;
+    }
+    
+    function toggleAdminNavbar() { 
+        document.getElementById('admin-navbar')?.classList.toggle('hidden'); 
+    }
+
+    async function handleAdminLogin() { 
+        const inputPwd = document.getElementById('admin-password-input').value.trim(); 
+        if (!inputPwd) {
+            alert("請輸入管理密碼！");
+            return;
+        }
+
+        const { error } = await client.auth.signInWithPassword({ 
+            email: 'admin@studio.local', 
+            password: inputPwd 
+        });
+
+        if (error) {
+            alert("❌ 認證登入失敗：" + error.message);
+        } else {
+            alert("🟢 主理人認證成功！");
+            document.getElementById('admin-password-input').value = '';
+            document.getElementById('admin-navbar')?.classList.remove('hidden');
+        }
+    }
+
+    async function handleAdminLogout() { 
+        try {
+            await client.auth.signOut();
+            isAdmin = false;
+            updateAdminUI();
+            switchTab(currentTab);
+            alert("已成功登出主理人模式。");
+        } catch (err) {
+            console.error("登出失敗:", err.message);
+        }
+    }
+
+    function updateAdminUI() {
+        const loggedOut = document.getElementById('admin-logged-out');
+        const loggedIn = document.getElementById('admin-logged-in');
+        const globalBadge = document.getElementById('global-admin-badge');
+        const adminNavbar = document.getElementById('admin-navbar');
+
+        if (isAdmin) { 
+            loggedOut?.classList.add('hidden'); 
+            loggedIn?.classList.remove('hidden'); 
+            globalBadge?.classList.remove('hidden'); 
+            adminNavbar?.classList.remove('hidden'); 
+        } else { 
+            loggedOut?.classList.remove('hidden'); 
+            loggedIn?.classList.add('hidden'); 
+            globalBadge?.classList.add('hidden'); 
+            adminNavbar?.classList.add('hidden');
+        }
+    }
+    
+    function openJoinModal(postId) { document.getElementById('join-post-id').value = postId; document.getElementById('join-modal').classList.remove('hidden'); }
+    function closeJoinModal() { document.getElementById('join-modal').classList.add('hidden'); document.getElementById('join-form').reset(); }
+    function openUploadModal() { document.getElementById('upload-modal').classList.remove('hidden'); }
+    function closeUploadModal() { document.getElementById('post-form').reset(); document.getElementById('upload-modal').classList.add('hidden'); }
+    function openSkillModal() { document.getElementById('skill-modal').classList.remove('hidden'); }
+    function closeSkillModal() { document.getElementById('skill-form').reset(); document.getElementById('skill-modal').classList.add('hidden'); }
+
+    function calculateTimeAgo(timestamp) {
+        if (!timestamp) return "剛剛";
+        const diffMs = new Date() - new Date(timestamp);
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffMins < 1) return "剛剛";
+        if (diffMins < 60) return `${diffMins} 分鐘前`;
+        if (diffHours < 24) return `${diffHours} 小時前`;
+        return `${diffDays} 天前`;
+    }
+
+    async function adminAdjustPoints(change) {
+        if (!isAdmin) {
+            alert("🔒 只有管理員可以調整萬事分！");
+            return;
+        }
+
+        const contact = document.getElementById('admin-target-contact').value.trim();
+        const name = document.getElementById('admin-target-name').value.trim();
+
+        if (!contact) {
+            alert("請輸入目標聯絡方式 (IG/電話)！");
+            return;
+        }
+
+        try {
+            await updateUserPointsInSupabase(contact, name, change);
+            alert(`✅ 成功為【${contact}】${change > 0 ? '增加' : '扣除'} 1 點萬事分！`);
+            document.getElementById('admin-target-contact').value = '';
+            document.getElementById('admin-target-name').value = '';
+        } catch (err) {
+            alert("調整萬事分失敗: " + err.message);
+        }
+    }
+</script>
