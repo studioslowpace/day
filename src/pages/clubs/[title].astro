@@ -37,9 +37,9 @@ const { club, allClubs, currentIndex } = Astro.props;
 const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : '';
 ---
 
-<BaseLayout>
+<BaseLayout title={`客舍讀書會 Slow Pace Reading Clubs - ${club.title}`}>
   <Fragment slot="head">
-    <title>客舍讀書會 Slow Pace Reading Clubs - {club.title || '詳細內容'}</title>
+    
   </Fragment>
 
    
