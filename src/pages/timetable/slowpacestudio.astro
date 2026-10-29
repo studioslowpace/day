@@ -509,12 +509,15 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 
 
-<script >
+<script>
 // --- 設定 ---
 const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
 const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-const TABLE_NAME = 'events'; // ⚠️ 請務必填入你在 Supabase 的 Table 名稱
-const client = supabase.createClient(supabaseUrl, supabaseKey);
+const TABLE_NAME = 'events'; 
+
+// 💡 確保共用全域 Supabase 客戶端，避免重複初始化警告
+window.client = window.client || (window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null);
+const client = window.client;
 
 const holidays = ["2026-01-01", "2026-02-17", "2026-02-18", "2026-02-19", "2026-04-03", "2026-04-04", "2026-04-06", "2026-04-07", "2026-05-01", "2026-05-25", "2026-06-19", "2026-07-01", "2026-09-26", "2026-10-01", "2026-10-19", "2026-12-25", "2026-12-26"];
 
@@ -522,20 +525,34 @@ const holidays = ["2026-01-01", "2026-02-17", "2026-02-18", "2026-02-19", "2026-
 const today = new Date();
 const currentYearStr = today.getFullYear();
 const currentMonthStr = (today.getMonth() + 1).toString().padStart(2, '0');
-// 🛠️ 統一使用這個宣告好的變數
 let currentMonth = `${currentYearStr}-${currentMonthStr}`; 
 let isAdmin = false;
-let dbData = { events: {}, months: [], types: [], password: "" };
+let dbData = { events: {}, months: [], types: [] }; // 移除舊有的 password 欄位依賴
 
-// --- 初始化函式 ---
+// --- 初始化檢查登入狀態與抓取資料 ---
+async function initPage() {
+    if (client) {
+        // 檢查 Supabase Auth Session (與 header.astro 同步)
+        const { data: { session } } = await client.auth.getSession();
+        if (session) {
+            isAdmin = true;
+            document.body.classList.add('admin-mode');
+        } else {
+            isAdmin = false;
+            document.body.classList.remove('admin-mode');
+        }
+    }
+    await fetchData();
+}
+
 async function fetchData() {
+    if (!client) return;
     const { data, error } = await client.from(TABLE_NAME).select('*').eq('id', 1).single();
     if (!error && data) {
         dbData = {
             events: data.calendar_events || {},
             months: data.calendar_months || [],
-            types: data.calendar_types || [],
-            password: data.calendar_password || "slow2024"
+            types: data.calendar_types || []
         };
         renderCalendar();
         renderLegend();
@@ -543,9 +560,13 @@ async function fetchData() {
     }
 }
 
+// 頁面載入時執行初始化
+window.addEventListener('DOMContentLoaded', initPage);
+
 // --- 介面渲染 ---
 function renderCalendar() {
     const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
     const [year, month] = currentMonth.split('-').map(Number);
     document.getElementById('month-display').innerText = `${year}年 ${month}月`;
 
@@ -555,17 +576,11 @@ function renderCalendar() {
     calendarEl.innerHTML = `<div class="weekday">日</div><div class="weekday">一</div><div class="weekday">二</div><div class="weekday">三</div><div class="weekday">四</div><div class="weekday">五</div><div class="weekday">六</div>`;
 
     for (let i = 0; i < firstDay; i++) calendarEl.innerHTML += `<div class="cell empty-cell"></div>`;
- for (let d = 1; d <= daysInMonth; d++) {
-        // --- 🛠️【新增：判斷是否為假日】---
-        // 將目前的日(d) 補零轉成字串，例如 1 變成 "01"
+    for (let d = 1; d <= daysInMonth; d++) {
         const dayStr = d.toString().padStart(2, '0');
-        // 組合出完整日期，格式為 "YYYY-MM-DD"
         const fullDateStr = `${currentMonth}-${dayStr}`;
-        // 檢查 holidays 陣列有沒有包含這個日期
         const isHoliday = holidays.includes(fullDateStr);
-        // 如果是假日就加上 'holiday' 樣式類別
         const holidayClass = isHoliday ? 'holiday' : '';
-        // ---------------------------------
 
         const events = (dbData.events[currentMonth] || []).filter(e => e.day === d);
         let eventsHtml = events.map(e => `
@@ -574,7 +589,6 @@ function renderCalendar() {
             </div>
         `).join('');
         
-        // 💡【修改】：在 cell 的 class 列表中加入 ${holidayClass}
         calendarEl.innerHTML += `
             <div class="cell ${holidayClass}" onclick="handleCellClick(${d})">
                 <div class="day-num">${d}</div>
@@ -584,22 +598,19 @@ function renderCalendar() {
 }
 
 function renderLegend() {
-    // 1. 下拉選單處理 (維持原本的)
-    document.getElementById('e-type').innerHTML = dbData.types.map(t => 
-        `<option value="${t.name}">${t.name}</option>`
-    ).join('');
+    const typeSelect = document.getElementById('e-type');
+    if (typeSelect) {
+        typeSelect.innerHTML = dbData.types.map(t => 
+            `<option value="${t.name}">${t.name}</option>`
+        ).join('');
+    }
 
     const legendList = document.getElementById('legend-list');
     const titleArea = document.querySelector('.title-area'); 
     let newBox = document.getElementById('new-legend-list');
 
-    // 檢查原本的 legend-list 是否存在，防錯
-    if (!legendList) {
-        console.error("找不到 #legend-list 元素，請檢查 HTML ID 是否正確");
-        return;
-    }
+    if (!legendList) return;
 
-    // 2. 確保新 box 存在
     if (!newBox) {
         newBox = document.createElement('div');
         newBox.id = 'new-legend-list';
@@ -608,122 +619,49 @@ function renderLegend() {
         topHeader.parentNode.insertBefore(newBox, topHeader.nextSibling);
     }
 
-    // 3. 初始狀態：清空內容，先隱藏新 box
     legendList.innerHTML = '';
     newBox.innerHTML = '';
     newBox.style.display = 'none';
 
-    // 4. 先把所有資料通通渲染進原本的 legend-list
     legendList.innerHTML = dbData.types.map((t, index) => `
         <div class="legend-item" onclick="openTypeModal(${index})" style="cursor:pointer;">
             <div class="box" style="background:${t.color}"></div>${t.name}
         </div>
     `).join('');
 
-    // 5. 【關鍵修正：抓取標題高度，並給予保底值】
-    // 如果 titleArea 沒抓到高度 (0)，就預設給它 80 像素 (大約是你圖中標題加日期的高度)
     let maxAllowedHeight = titleArea ? titleArea.offsetHeight : 80;
-    if (maxAllowedHeight <= 0) {
-        maxAllowedHeight = 80; // 保底高度，防止 legend-list 整個縮小到不見
-    }
+    if (maxAllowedHeight <= 0) maxAllowedHeight = 80;
 
-    // 加一個安全計數器，防止極端情況下卡死網頁
     let safetyCounter = 0; 
     const maxItems = legendList.children.length;
 
-    // 當左邊圖例的實際總高度大於標題高度，且原本區域還有東西、且沒超出安全次數時
     while (legendList.scrollHeight > maxAllowedHeight && legendList.children.length > 0 && safetyCounter < maxItems) {
-        newBox.style.display = 'flex'; // 顯示下方的全新 Box
-        
+        newBox.style.display = 'flex'; 
         const lastItem = legendList.lastElementChild; 
         if (lastItem) {
-            newBox.insertBefore(lastItem, newBox.firstChild); // 移到新 Box
+            newBox.insertBefore(lastItem, newBox.firstChild); 
         }
         safetyCounter++;
     }
 }
 
-// 確保網頁所有圖片、元件完全載入後才第一次執行，避免抓到 0 高度
 window.addEventListener('load', renderLegend);
 window.addEventListener('resize', renderLegend);
 
-
-// --- 管理員動作 (明確掛載到 window) ---
-window.toggleAdmin = function() {
-    if (!isAdmin) { window.openModal('authModal'); } 
-    else { isAdmin = false; document.body.classList.remove('admin-mode'); alert("已登出"); }
-};
-
-window.verifyAdmin = function() {
-    if (document.getElementById('admin-pwd').value === dbData.password) {
-        isAdmin = true;
-        document.body.classList.add('admin-mode');
-        window.closeModal('authModal');
-    } else { alert("密碼錯誤"); }
-};
-
-window.addEvent = function() {
-    const day = parseInt(document.getElementById('e-day').value);
-    const time = document.getElementById('e-time').value;
-    const text = document.getElementById('e-text').value;
-    const type = document.getElementById('e-type').value;
-    if (!dbData.events[currentMonth]) dbData.events[currentMonth] = [];
-    dbData.events[currentMonth].push({ day, time, text, type });
-    saveDB();
-};
-
-window.addType = function() {
-    const name = document.getElementById('new-type').value;
-    const color = document.getElementById('new-color').value;
-    dbData.types.push({ name, color });
-    saveDB();
-};
-
-window.submitAddMonth = function() {
-    const m = document.getElementById('new-month-input').value;
-    if (!dbData.months.includes(m)) dbData.months.push(m);
-    saveDB();
-    window.closeModal('monthModal');
-};
-
-window.submitChangePassword = function() {
-    // 1. 取得 HTML 裡對應的輸入框數值 (id: new-pwd-input)
-    const newPassword = document.getElementById('new-pwd-input').value.trim();
-
-    // 2. 驗證非空值
-    if (!newPassword) {
-        alert('請輸入新密碼！');
-        return;
-    }
-
-    // 3. 更新你的本地資料庫（假設管理員密碼存在 dbData.adminPassword 中，請根據你實際的結構調整）
-    if (!dbData.admin) {
-        dbData.admin = {}; // 確保 admin 物件存在
-    }
-    dbData.admin.password = newPassword;
-
-    // 4. 儲存資料並關閉彈窗
-    saveDB();
-    alert('管理員密碼修改成功！');
-    window.closeModal('passwordModal');
-};
-
-
-// --- 資料庫同步 ---
+// --- 資料庫同步更新 (不再儲存 password 欄位) ---
 async function saveDB() {
+    if (!client) return;
     await client.from(TABLE_NAME).update({
         calendar_events: dbData.events,
         calendar_months: dbData.months,
-        calendar_types: dbData.types,
-        calendar_password: dbData.admin?.password
+        calendar_types: dbData.types
     }).eq('id', 1);
     fetchData();
 }
 
 window.renderMonthList = function() {
     const container = document.getElementById('popup-month-list');
-    if (!container) return; // 確保容器存在
-    
+    if (!container) return;
     container.innerHTML = dbData.months.map(m => `
         <button class="month-select-btn ${m === currentMonth ? 'active' : ''}" 
                 onclick="switchMonth('${m}')">
@@ -734,25 +672,23 @@ window.renderMonthList = function() {
 
 window.switchMonth = function(m) {
     currentMonth = m;
-    fetchData(); // 重新獲取該月份資料
+    fetchData(); 
     window.closeModal('switchMonthModal');
+};
+
+window.submitAddMonth = function() {
+    const m = document.getElementById('new-month-input').value;
+    if (!dbData.months.includes(m)) dbData.months.push(m);
+    saveDB();
+    window.closeModal('monthModal');
 };
 
 window.submitDelMonth = function() {
     if (!isAdmin) return;
-
-    // 1. 從月份清單中移除
     dbData.months = dbData.months.filter(m => m !== currentMonth);
-    
-    // 2. 從活動資料中移除該月份
     delete dbData.events[currentMonth];
-    
-    // 3. 切換回第一個可用月份，若無則清空
     currentMonth = dbData.months.length > 0 ? dbData.months[0] : "";
-    
-    // 4. 儲存至資料庫
     saveDB();
-    
     window.closeModal('delMonthModal');
     alert("該月份已刪除");
 };
@@ -777,7 +713,6 @@ window.openTypeModal = function(index) {
 window.submitUpdateType = function() {
     const newName = document.getElementById('manage-type-name').value;
     const newColor = document.getElementById('manage-type-color').value;
-    
     dbData.types[editingTypeIndex] = { name: newName, color: newColor };
     saveDB();
     window.closeModal('typeManageModal');
@@ -789,30 +724,24 @@ window.submitDeleteType = function() {
     window.closeModal('typeManageModal');
 };
 
-// --- 移動順序 (移動位置) ---
 window.moveType = function(direction) {
-    // direction 為 -1 (上移) 或 1 (下移)
     const index = editingTypeIndex;
     const newIndex = index + direction;
-    
     if (newIndex >= 0 && newIndex < dbData.types.length) {
         const temp = dbData.types[index];
         dbData.types[index] = dbData.types[newIndex];
         dbData.types[newIndex] = temp;
-        
-        editingTypeIndex = newIndex; // 更新當前編輯索引
+        editingTypeIndex = newIndex; 
         saveDB();
     }
 };
 
-// --- 修改後的 handleCellClick：支援單獨刪除與單獨編輯 ---
 window.handleCellClick = function(day) {
     if (isAdmin && document.getElementById('e-day') && document.getElementById('edit-idx-target').value === "-1") {
         document.getElementById('e-day').value = day;
     }
 
     const dayEvents = (dbData.events[currentMonth] || []).filter(e => e.day === day);
-    
     document.getElementById('modal-action-title').innerText = `${day}日 活動資訊`;
     const preview = document.getElementById('info-event-preview');
     const buttons = document.getElementById('modal-action-buttons');
@@ -821,7 +750,6 @@ window.handleCellClick = function(day) {
         preview.innerHTML = "今日無活動。";
         buttons.innerHTML = `<button onclick="window.closeModal('eventActionModal')" style="background:#888; width:100%">關閉</button>`;
     } else {
-        // 💡 關鍵修正：在每條活動右側加上「編輯」與「單獨刪除」按鈕
         preview.innerHTML = dayEvents.map((e, idx) => `
             <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
                 <div style="flex: 1; padding-right: 10px;">
@@ -841,21 +769,16 @@ window.handleCellClick = function(day) {
             ${isAdmin ? `<button onclick="deleteEventsOfDay(${day})" style="background:#333; margin-top:8px; font-size:12px; padding:4px;">⚠️ 刪除今日所有活動</button>` : ''}
         `;
     }
-    
     window.openModal('eventActionModal');
 };
 
-// --- 💡 全新功能：單獨刪除某一筆活動 ---
 window.deleteSingleEvent = function(day, index) {
     const dayEvents = (dbData.events[currentMonth] || []).filter(e => e.day === day);
     const targetEvent = dayEvents[index];
-    
     if (!targetEvent) return;
     if (!confirm(`確定要刪除此筆活動嗎？\n【${targetEvent.time} - ${targetEvent.text}】`)) return;
 
     let monthEvents = dbData.events[currentMonth] || [];
-    
-    // 1. 找出這筆當天第 index 的活動，在整個月分陣列中真正的 global 索引位置
     let currentDayMatchCount = 0;
     const globalIndex = monthEvents.findIndex(e => {
         if (e.day === day) {
@@ -865,77 +788,65 @@ window.deleteSingleEvent = function(day, index) {
         return false;
     });
 
-    // 2. 如果找到了，將其從月分陣列中剔除
     if (globalIndex !== -1) {
         monthEvents.splice(globalIndex, 1);
-        
-        // 3. 如果在編輯模式下正好刪除了這筆資料，順便清空控制台以免錯亂
         const editIdx = document.getElementById('edit-idx-target').value;
         const editDay = document.getElementById('edit-day-target').value;
         if (editIdx == index && editDay == day) {
             window.clearEventForm();
         }
-
-        // 4. 同步資料庫並關閉彈窗
         saveDB();
         window.closeModal('eventActionModal');
-    } else {
-        alert("找不到該筆活動，刪除失敗。");
     }
 };
 
-// --- 💡 核心新增：切換至中控台的編輯模式 ---
 window.switchToEditMode = function(day, index) {
-    // 1. 抓取點擊的該筆活動資料
     const targetEvent = dbData.events[currentMonth].filter(e => e.day === day)[index];
     if (!targetEvent) return;
 
-    // 2. 關閉目前的詳細資訊彈窗
     window.closeModal('eventActionModal');
 
-    // 3. 把資料塞進「智慧中控台」的輸入框中
     document.getElementById('e-day').value = day;
     document.getElementById('e-time').value = targetEvent.time;
     document.getElementById('e-text').value = targetEvent.text;
     document.getElementById('e-type').value = targetEvent.type;
 
-    // 4. 標記狀態：記錄目前正在編輯哪一天的第幾筆資料
     document.getElementById('edit-day-target').value = day;
     document.getElementById('edit-idx-target').value = index;
 
-    // 5. 介面視覺調整：顯示編輯徽章、更改儲存按鈕外觀與文字
     document.getElementById('edit-mode-badge').style.display = 'inline-block';
     const saveBtn = document.getElementById('btn-save-event');
     saveBtn.innerText = "儲存修改";
-    saveBtn.style.background = "#f0a818"; // 改為編輯橘色
+    saveBtn.style.background = "#f0a818"; 
 
-    // 6. 貼心導航：頁面自動滾動到控制台位置
     document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
 };
 
-
-// --- 💡 核心新增：中控台儲存按鈕的分流處理器 ---
 window.handleEventSubmit = function() {
     const editIdx = parseInt(document.getElementById('edit-idx-target').value);
-    
     if (editIdx === -1) {
-        // 狀態為 -1 代表是一般狀態 ── 執行「新增活動」
         window.addEvent();
     } else {
-        // 狀態不為 -1 代表是編輯狀態 ── 執行「更新活動」
         window.submitUpdateEventFromPanel();
     }
 };
 
+window.addEvent = function() {
+    const day = parseInt(document.getElementById('e-day').value);
+    const time = document.getElementById('e-time').value;
+    const text = document.getElementById('e-text').value;
+    const type = document.getElementById('e-type').value;
+    if (!dbData.events[currentMonth]) dbData.events[currentMonth] = [];
+    dbData.events[currentMonth].push({ day, time, text, type });
+    saveDB();
+    window.clearEventForm();
+};
 
-// --- 💡 核心新增：執行中控台的修改儲存 ---
 window.submitUpdateEventFromPanel = function() {
     const day = parseInt(document.getElementById('edit-day-target').value);
-    const index = parseInt(document.getElementById('edit-idx-target').value); // 當天過濾後的第幾筆
-    
+    const index = parseInt(document.getElementById('edit-idx-target').value);
     let monthEvents = dbData.events[currentMonth] || [];
     
-    // 算出這個「當天第 index 筆」的活動，在整個月分陣列中真正的 global 索引位置
     let currentDayMatchCount = 0;
     const globalIndex = monthEvents.findIndex(e => {
         if (e.day === day) {
@@ -946,273 +857,42 @@ window.submitUpdateEventFromPanel = function() {
     });
 
     if (globalIndex !== -1) {
-        // 允許使用者順便連「日期(日)」一起改，故從欄位讀取最新的日
         const newDay = parseInt(document.getElementById('e-day').value) || day;
-
         monthEvents[globalIndex] = {
             day: newDay,
             time: document.getElementById('e-time').value,
             text: document.getElementById('e-text').value,
             type: document.getElementById('e-type').value
         };
-        
-        saveDB();              // 儲存至 Supabase 資料庫
-        window.clearEventForm(); // 重設回新增模式並清空欄位
+        saveDB();              
+        window.clearEventForm(); 
         alert("活動修改成功！");
-    } else {
-        alert("找不到原始活動，修改失敗。");
     }
 };
 
-
-// --- 💡 優化：清空表單並還原為新增模式 ---
 window.clearEventForm = function() {
-    // 清空所有輸入欄位
     document.getElementById('e-day').value = "";
     document.getElementById('e-time').value = "";
     document.getElementById('e-text').value = "";
     if(dbData.types.length > 0) {
         document.getElementById('e-type').value = dbData.types[0].name;
     }
-
-    // 還原編輯狀態標記
     document.getElementById('edit-day-target').value = "-1";
     document.getElementById('edit-idx-target').value = "-1";
-
-    // 還原中控台按鈕與標籤視覺
     document.getElementById('edit-mode-badge').style.display = 'none';
     const saveBtn = document.getElementById('btn-save-event');
     saveBtn.innerText = "新增活動";
     saveBtn.style.background = "var(--primary-blue)";
 };
 
-
-// --- 💡 隱形沙盒：精準修正標籤排版、保證 Logo 絕不走位完美版 ---
-window.exportEventImage = function() {
-    console.log("正在啟動隱形沙盒，進行標籤物理合併，確保 Logo 絕不走位...");
-
-    // 1. 抓取你的日曆主範圍 (.container)
-    const targetElement = document.querySelector('.container'); 
-    if (!targetElement) {
-        alert("找不到日曆區域，請確認網頁結構中包含 .container 元素");
-        return;
-    }
-
-    // 2. 自動獲取網頁目前日曆背景的顏色
-    let webBgColor = '#e8f0e0';
-    try {
-        const computedStyle = window.getComputedStyle(targetElement);
-        if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'transparent' && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-            webBgColor = computedStyle.backgroundColor;
-        }
-    } catch(e) {}
-
-    // 3. 【建立隱形沙盒】
-    const sandbox = targetElement.cloneNode(true);
-    
-    // 保持隱形，放置於螢幕外
-    sandbox.style.position = 'absolute';
-    sandbox.style.left = '-9999px';
-    sandbox.style.top = '0';
-    // ⚠️ 移除先前強加的 1240px 暴力寬度限制，改回跟網頁原本標準一模一樣，確保 Logo 留在原位
-    sandbox.style.boxShadow = 'none';
-    sandbox.style.border = 'none';
-    sandbox.style.transform = 'none';
-    
-    // 如果包含管理員控制台，將其移除
-    const clonedAdmin = sandbox.querySelector('#admin-panel');
-    if (clonedAdmin) clonedAdmin.remove();
-
-    // 🔥【核心修正：物理合併標籤】
-    // 找出沙盒中的第一行容器與第二行容器
-    const mainLegendList = sandbox.querySelector('#legend-list');
-    const additionalLegendBox = sandbox.querySelector('#new-legend-list');
-
-    if (mainLegendList && additionalLegendBox) {
-        // 1. 強制把第一行原本的「分散對齊」或限制取消，改成標準靠左、自然緊密排列
-        mainLegendList.style.setProperty('display', 'flex', 'important');
-        mainLegendList.style.setProperty('justify-content', 'flex-start', 'important');
-        mainLegendList.style.setProperty('flex-wrap', 'wrap', 'important'); // 允許自然接續
-        mainLegendList.style.setProperty('gap', '15px', 'important');        // 標籤之間的固定漂亮間距
-
-        // 2. 拔出第二行裡面的所有標籤，統統塞進第一行的尾巴
-        while (additionalLegendBox.children.length > 0) {
-            mainLegendList.appendChild(additionalLegendBox.firstElementChild);
-        }
-
-        // 3. 把已經變空的第二行完全隱藏，不留痕跡
-        additionalLegendBox.style.setProperty('display', 'none', 'important');
-    }
-
-    // 💡【細節優化：修復 html2canvas 文字多空格 Bug】
-    const legendArea = sandbox.querySelectorAll('[class*="legend"], [id*="legend"]');
-    legendArea.forEach(area => {
-        if (area.className && area.className.includes('legend-item')) {
-            area.style.setProperty('display', 'inline-flex', 'important');
-            area.style.setProperty('align-items', 'center', 'important');
-            area.style.setProperty('gap', '6px', 'important'); // 色塊與文字的距離
-            area.style.setProperty('margin', '0', 'important');
-        }
-
-        const allItems = area.querySelectorAll('*');
-        allItems.forEach(el => {
-            el.style.setProperty('font-family', '"Microsoft JhengHei", "Apple LiGothic Medium", "Noto Sans TC", sans-serif', 'important');
-            el.style.setProperty('white-space', 'nowrap', 'important');
-            
-            if (el.childNodes.length > 0) {
-                el.childNodes.forEach(node => {
-                    if (node.nodeType === Node.TEXT_NODE && node.nodeValue.trim() !== '') {
-                        const text = node.nodeValue.trim();
-                        const newSpan = document.createElement('span');
-                        newSpan.textContent = text;
-                        newSpan.style.setProperty('letter-spacing', '-0.3px', 'important');
-                        newSpan.style.setProperty('word-spacing', '0px', 'important');
-                        newSpan.style.setProperty('display', 'inline-block', 'important');
-                        newSpan.style.setProperty('white-space', 'nowrap', 'important');
-                        
-                        if (node.parentNode) {
-                            node.parentNode.replaceChild(newSpan, node);
-                        }
-                    }
-                });
-            }
-        });
-    });
-
-    // 將分身貼到網頁上準備拍照
-    document.body.appendChild(sandbox);
-
-    // 4. 開始執行截圖 (不強加視窗寬度，維持自然排版)
-    html2canvas(sandbox, {
-        useCORS: true,
-        allowTaint: true,
-        scale: 3, 
-        backgroundColor: webBgColor,
-        letterRendering: false,
-        logging: false
-    }).then(domCanvas => {
-        
-        sandbox.remove(); // 拍照結束，立刻刪除沙盒
-
-        // 5. 建立最終 4:5 的標準 1080x1350 導出大畫布
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = 1080;
-        finalCanvas.height = 1350;
-        const ctx = finalCanvas.getContext('2d');
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-
-        ctx.fillStyle = webBgColor;
-        ctx.fillRect(0, 0, 1080, 1350);
-
-        // 6. 【完美等比例縮放算法】
-        const imgWidth = domCanvas.width;
-        const imgHeight = domCanvas.height;
-        
-        const maxWidth = 1020; 
-        const maxHeight = 1290;
-        
-        const scaleRatio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
-        const renderWidth = imgWidth * scaleRatio;
-        const renderHeight = imgHeight * scaleRatio;
-
-        const x = (1080 - renderWidth) / 2;
-        const y = (1350 - renderHeight) / 2;
-
-        // 7. 將原樣繪製到大畫布正中央
-        ctx.drawImage(domCanvas, 0, 0, imgWidth, imgHeight, x, y, renderWidth, renderHeight);
-
-        // 8. 觸發最高品質 PNG 圖片下載
-        try {
-            let monthName = "月曆";
-            if (typeof currentMonth !== 'undefined') { monthName = currentMonth; }
-            
-            const dataURL = finalCanvas.toDataURL('image/png', 1.0);
-            const downloadLink = document.createElement('a');
-            downloadLink.style.display = 'none';
-            downloadLink.href = dataURL;
-            downloadLink.download = `客舍時間表-${monthName}-1080x1350.png`;
-            
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            console.log("排版完美修復，高畫質相片導出成功！");
-        } catch (err) {
-            console.error("圖片儲存失敗:", err);
-            alert("導出失敗，請重試。");
-        }
-    }).catch(error => {
-        console.error("快照擷取出錯:", error);
-        sandbox.remove();
-    });
-};
-
-
-// --- 執行刪除 ---
 window.deleteEventsOfDay = function(day) {
     if (!confirm(`確定要刪除 ${day} 日的所有活動嗎？`)) return;
-    
-    // 過濾掉當天活動
     dbData.events[currentMonth] = dbData.events[currentMonth].filter(e => e.day !== day);
-    
-    // 更新資料庫與重繪畫面
     saveDB(); 
     window.closeModal('eventActionModal');
 };
 
-// 點擊「編輯」按鈕時觸發
-window.openEditModal = function(day, index) {
-    const event = dbData.events[currentMonth].filter(e => e.day === day)[index];
-    document.getElementById('edit-index').value = index; // 暫存 index
-    document.getElementById('edit-day').value = day;
-    document.getElementById('edit-time').value = event.time;
-    document.getElementById('edit-text').value = event.text;
-    document.getElementById('edit-type').value = event.type;
-    
-    window.closeModal('eventActionModal');
-    window.openModal('editEventModal');
-};
-
-// 儲存修改內容
-window.submitEditEvent = function() {
-const day = parseInt(document.getElementById('edit-day').value);
-    const index = parseInt(document.getElementById('edit-index').value); // 這是當天過濾後的第幾筆
-    
-    // 1. 找出當月的所有活動
-    let monthEvents = dbData.events[currentMonth] || [];
-    
-    // 2. 算出這個「當天第 index 筆」的活動，在「整個月」的陣列中真正的萬用索引值 (globalIndex)
-    let currentDayMatchCount = 0;
-    const globalIndex = monthEvents.findIndex(e => {
-        if (e.day === day) {
-            if (currentDayMatchCount === index) return true;
-            currentDayMatchCount++;
-        }
-        return false;
-    });
-
-    // 3. 如果有找到，直接更新該筆資料
-    if (globalIndex !== -1) {
-        monthEvents[globalIndex] = {
-            day: day, // 保持原本日期，或也可以允許從 input 修改
-            time: document.getElementById('edit-time').value,
-            text: document.getElementById('edit-text').value,
-            type: document.getElementById('edit-type').value
-        };
-        
-        // 4. 存檔並關閉視窗
-        saveDB();
-        window.closeModal('editEventModal');
-    } else {
-        alert("找不到該筆活動資料，修改失敗。");
-    }
-};
-
-// --- 輔助 ---
 window.openModal = (id) => document.getElementById(id).classList.add('active');
 window.closeModal = (id) => document.getElementById(id).classList.remove('active');
-
-
 </script>
 </BaseLayout>
