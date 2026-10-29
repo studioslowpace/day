@@ -1165,34 +1165,61 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     let allUserRecords = [];
     let currentTagFilter = 'all';
 
-    window.onload = function() {
-        fetchPostsFromSupabase();
-        fetchSkillsFromSupabase(); 
-        fetchAllUserRecordsFromSupabase();
-        setupRandomDefaultAvatar();
+window.onload = async function() {
+    fetchPostsFromSupabase();
+    fetchSkillsFromSupabase(); 
+    fetchAllUserRecordsFromSupabase();
+    setupRandomDefaultAvatar();
 
-        initEventListeners();
+    initEventListeners();
 
-        client.auth.onAuthStateChange(async (event, session) => {
-            if (session?.user) {
-                const { data: profile, error } = await client
-                    .from('profiles')
-                    .select('is_admin')
-                    .eq('id', session.user.id)
-                    .single();
+    // 🌟 1. 網頁一載入就「主動」檢查一次目前的登入狀態（解決時間差問題）
+    try {
+        const { data: { session } } = await client.auth.getSession();
+        if (session?.user) {
+            const { data: profile, error } = await client
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', session.user.id)
+                .single();
 
-                if (!error && profile && profile.is_admin === true) {
-                    isAdmin = true;
-                } else {
-                    isAdmin = false;
-                }
+            if (!error && profile && profile.is_admin === true) {
+                isAdmin = true;
             } else {
                 isAdmin = false;
             }
-            updateAdminUI();
-            refreshView();
-        });
-    };
+        } else {
+            isAdmin = false;
+        }
+    } catch (err) {
+        console.error("檢查初始登入狀態失敗:", err);
+        isAdmin = false;
+    }
+    
+    updateAdminUI();
+    refreshView();
+
+    // 🌟 2. 持續監聽後續的登入、登出動作
+    client.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+            const { data: profile, error } = await client
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', session.user.id)
+                .single();
+
+            if (!error && profile && profile.is_admin === true) {
+                isAdmin = true;
+            } else {
+                isAdmin = false;
+            }
+        } else {
+            isAdmin = false;
+        }
+        updateAdminUI();
+        refreshView();
+    });
+};
 
     function initEventListeners() {
         document.getElementById('banner-logo-trigger')?.addEventListener('click', toggleAdminNavbar);
@@ -1601,6 +1628,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
         bindDynamicElementEvents();
         setTimeout(() => { lucide.createIcons(); }, 100);
+        // 讓所有卡片點擊時都能自動導向獨立分頁
+document.querySelectorAll('.post-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+        const postId = e.currentTarget.getAttribute('data-post-id');
+        window.location.href = `/posts/${postId}`;
+    });
+});
     }
 
     function bindDynamicElementEvents() {
@@ -1675,115 +1709,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         }
     }
 
-    function renderSinglePostView(postId) {
-        const post = posts.find(p => String(p.id) === String(postId));
-        const targetDiv = document.getElementById('single-post-render-target');
-        if (!post || !targetDiv) return;
-
-        const hList = post.heroeslist || [];
-        const isComp = post.iscompleted !== undefined ? post.iscompleted : post.isCompleted;
-        const bgClor = post.cardbgcolor || 'bg-amber-50';
-        const tTitle = post.tasktitle || '';
-        const cName = post.clientname || '';
-        const tTag = post.tasktag || '';
-        const tDetails = post.taskdetails || '';
-        const rwd = post.reward || '';
-
-        const hasAccess = isAdmin || unlockedPosts[postId] || !post.password;
-
-        let actionButtonsHtml = '';
-        let managementSectionHtml = '';
-
-        if (isComp) {
-            actionButtonsHtml = `<span class="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl">已由 ${post.completed_by_name || '鄰里英雄'} 完成 🏮</span>`;
-        } else {
-            actionButtonsHtml = `
-                <div class="flex gap-2">
-                    ${hasAccess ? `<button id="btn-open-complete-modal" class="bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs hover:bg-emerald-700 shadow-sm" data-post-id="${post.id}">✔️ 結案給分</button>` : ''}
-                    <button id="btn-open-join-detail" class="bg-orange-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs hover:bg-orange-700 shadow-sm" data-post-id="${post.id}">我要接單</button>
-                </div>
-            `;
-        }
-
-        if (hasAccess) {
-            let participantsListHtml = hList.length === 0 
-                ? `<p class="text-xs text-gray-400 py-4 col-span-2 text-center">目前尚無接單人，快來成為第一個吧！</p>`
-                : hList.map(person => `
-                    <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                        <span class="font-bold text-gray-700 text-xs">🥷 接單人：${person.name}</span>
-                        <span class="font-bold text-gray-700 text-xs">📋 聯絡：${person.contact}</span>
-                        <button class="text-[11px] text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 font-bold btn-copy-contact" data-contact="${person.contact}">複製</button>
-                    </div>
-                `).join('');
-
-            managementSectionHtml = `
-                <div class="pt-6 border-t border-gray-100 space-y-3">
-                    <h3 class="text-xs font-bold text-emerald-800 tracking-widest uppercase flex items-center gap-1.5">
-                        <i data-lucide="unlock" class="w-3.5 h-3.5"></i><span>已接下委託的鄰里人名冊 (${hList.length})</span>
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">${participantsListHtml}</div>
-                </div>
-            `;
-        } else {
-            managementSectionHtml = `
-                <div class="pt-6 border-t border-gray-100 bg-stone-50/50 p-4 rounded-2xl border border-dashed border-stone-200 mt-4 text-center">
-                    <div class="flex flex-col items-center justify-center space-y-2">
-                        <i data-lucide="lock" class="w-6 h-6 text-stone-400"></i>
-                        <h4 class="text-xs font-bold text-stone-700">鄰里人名冊與結案功能已加密</h4>
-                        <p class="text-[11px] text-gray-400 max-w-sm">為了保護接單人的聯絡隱私，請輸入發布此案件時設定的「管理密碼」解鎖查看名冊與進行結案給分。</p>
-                        <div class="flex gap-2 max-w-xs w-full mt-2">
-                            <input type="password" id="inline-pwd-input" placeholder="輸入此案件管理密碼" class="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs tracking-wider focus:outline-none focus:border-orange-500">
-                            <button id="btn-verify-inline-pwd" class="px-4 py-1.5 bg-stone-800 text-white font-bold text-xs rounded-lg whitespace-nowrap hover:bg-stone-900" data-post-id="${post.id}">解鎖</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        targetDiv.innerHTML = `
-            <div class="max-w-3xl mx-auto bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-amber-100 w-full space-y-6">
-                <div class="flex items-center justify-between pb-4 border-b border-gray-100">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-14 h-14 rounded-full ${bgClor} flex items-center justify-center text-3xl shadow-inner">${post.clientemoji || '🙋‍♂️'}</div>
-                        <div>
-                            <h1 class="text-2xl font-bold text-gray-900">${tTitle}</h1>
-                            <p class="text-sm text-gray-500 mt-1">發起委託：<span class="font-semibold text-gray-700">${cName}</span></p>
-                        </div>
-                    </div>
-                    <span class="text-xs px-3 py-1.5 rounded-full bg-orange-50 text-orange-700 font-bold">${tTag}</span>
-                </div>
-                <div class="space-y-2">
-                    <h3 class="text-xs font-bold text-gray-400 tracking-widest uppercase">委託細節說明</h3>
-                    <p class="text-base text-gray-700 leading-relaxed tracking-wide whitespace-pre-line">${tDetails}</p>
-                </div>
-                <div class="bg-amber-50/30 rounded-2xl p-4 grid grid-cols-2 gap-4 text-sm border border-amber-100">
-                    <div><span class="block text-xs text-gray-400 mb-0.5">💰 額外謝禮 </span><span class="font-bold text-amber-800">${rwd}</span></div>
-                </div>
-                <div class="pt-2 flex items-center justify-between">
-                    <div class="text-sm text-gray-600 flex items-center space-x-1"><i data-lucide="users" class="w-4 h-4 text-orange-600"></i><span>已有 <strong class="text-gray-900 font-bold text-base">${hList.length}</strong> 位鄰里人挺身而出</span></div>
-                    ${actionButtonsHtml}
-                </div>
-                ${managementSectionHtml}
-            </div>
-        `;
-
-        document.getElementById('btn-open-complete-modal')?.addEventListener('click', (e) => {
-            openCompleteModal(e.currentTarget.getAttribute('data-post-id'));
-        });
-        document.getElementById('btn-open-join-detail')?.addEventListener('click', (e) => {
-            openJoinModal(e.currentTarget.getAttribute('data-post-id'));
-        });
-        document.getElementById('btn-verify-inline-pwd')?.addEventListener('click', (e) => {
-            verifyPostPasswordInline(e.currentTarget.getAttribute('data-post-id'));
-        });
-        document.querySelectorAll('.btn-copy-contact').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                copyContactInfo(e.currentTarget.getAttribute('data-contact'));
-            });
-        });
-
-        setTimeout(() => { lucide.createIcons(); }, 100);
-    }
+    
 
     function openCompleteModal(postId) {
         const post = posts.find(p => String(p.id) === String(postId));
