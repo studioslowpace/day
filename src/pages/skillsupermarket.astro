@@ -1286,9 +1286,9 @@ window.onload = async function() {
         } catch (err) { console.error("讀取技能名冊失敗:", err.message); }
     }
 
-    function refreshView() { 
-        if (currentViewingPostId !== null) { renderSinglePostView(currentViewingPostId); } 
-        else { renderPosts(); } 
+function refreshView() { 
+        // 主頁大廳只需要重新渲染列表
+        renderPosts(); 
     }
 
     async function fetchAllUserRecordsFromSupabase() {
@@ -1687,21 +1687,15 @@ window.onload = async function() {
         });
     }
 
-    function goToPostDetail(postId) {
-        currentViewingPostId = postId;
-        document.getElementById('main-content-layout').classList.add('hidden');
-        document.getElementById('header-upload-btn')?.classList.add('hidden');
-        document.getElementById('header-skill-btn')?.classList.add('hidden');
-        document.getElementById('single-post-layout').classList.remove('hidden');
-        renderSinglePostView(postId);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+function goToPostDetail(postId) {
+        if (!postId) return;
+        // 🌟 直接導向獨立分頁
+        window.location.href = `/posts/${postId}`;
     }
 
-    function backToHomeList() {
-        currentViewingPostId = null;
-        document.getElementById('single-post-layout').classList.add('hidden');
-        document.getElementById('main-content-layout').classList.remove('hidden');
-        switchTab(currentTab); 
+function backToHomeList() {
+        // 如果在獨立分頁點擊返回，直接回首頁大廳
+        window.location.href = '/skillsupermarket';
     }
 
     function verifyPostPasswordInline(postId) {
