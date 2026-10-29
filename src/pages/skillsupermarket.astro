@@ -1628,13 +1628,21 @@ window.onload = async function() {
 
         bindDynamicElementEvents();
         setTimeout(() => { lucide.createIcons(); }, 100);
-        // 讓所有卡片點擊時都能自動導向獨立分頁
-document.querySelectorAll('.post-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-        const postId = e.currentTarget.getAttribute('data-post-id');
-        window.location.href = `/posts/${postId}`;
-    });
-});
+
+        // 🌟 修正後的卡片點擊跳轉邏輯
+        document.querySelectorAll('.card-post-item').forEach(card => {
+            card.addEventListener('click', (e) => {
+                // 如果點擊的目標本身是按鈕、連結或內部特定互動元件，就不執行跳轉
+                if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.tag-click-trigger')) {
+                    return;
+                }
+                
+                const postId = card.getAttribute('data-post-id');
+                if (postId) {
+                    window.location.href = `/posts/${postId}`;
+                }
+            });
+        });
     }
 
     function bindDynamicElementEvents() {
