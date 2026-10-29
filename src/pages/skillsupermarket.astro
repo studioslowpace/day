@@ -1187,7 +1187,6 @@ textarea::placeholder {
         
         const supabaseInstance = window.supabase || supabase;
         const client = supabase.createClient(supabaseUrl, supabaseKey);
-        const defaultPassword = "slow2024"; // 全域管理端固定登入密碼
         
         let posts = [];                 // 存放從資料庫撈出來的所有委託案件
         let skills = [];                // 存放所有鄰里人技能檔案
@@ -1202,6 +1201,26 @@ textarea::placeholder {
             fetchSkillsFromSupabase(); 
             fetchAllUserRecordsFromSupabase();
             setupRandomDefaultAvatar();
+            // 🌟 監聽 Supabase 登入狀態，檢查是否為主理人 (is_admin)
+    client.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+            const { data: profile, error } = await client
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', session.user.id)
+                .single();
+
+            if (!error && profile && profile.is_admin === true) {
+                isAdmin = true;
+            } else {
+                isAdmin = false;
+            }
+        } else {
+            isAdmin = false;
+        }
+        updateAdminUI();
+        refreshView();
+    });
         };
 
         // 從 Supabase 撈取委託單資料
@@ -2005,19 +2024,59 @@ async function handleFormSubmit(event) {
         }
         
         // 主理人全域管理面板開關與認證
-        function toggleAdminNavbar() { document.getElementById('admin-navbar')?.classList.toggle('hidden'); }
-        function handleAdminLogin() { 
-            const inputPwd = document.getElementById('admin-password-input').value; 
-            if (inputPwd === defaultPassword) { isAdmin = true; updateAdminUI(); switchTab(currentTab); document.getElementById('admin-password-input').value = ''; } else { alert("認證密碼錯誤！"); } 
-        }
-        function handleAdminLogout() { isAdmin = false; updateAdminUI(); switchTab(currentTab); }
-        function updateAdminUI() {
-            const loggedOut = document.getElementById('admin-logged-out');
-            const loggedIn = document.getElementById('admin-logged-in');
-            const globalBadge = document.getElementById('global-admin-badge');
-            if (isAdmin) { loggedOut?.classList.add('hidden'); loggedIn?.classList.remove('hidden'); globalBadge?.classList.remove('hidden'); } 
-            else { loggedOut?.classList.remove('hidden'); loggedIn?.classList.add('hidden'); globalBadge?.classList.add('hidden'); }
-        }
+function toggleAdminNavbar() { 
+    document.getElementById('admin-navbar')?.classList.toggle('hidden'); 
+}
+// 🌟 改用 Supabase Auth 進行主理人認證
+async function handleAdminLogin() { 
+    const inputPwd = document.getElementById('admin-password-input').value.trim(); 
+    if (!inputPwd) {
+        alert("請輸入管理密碼！");
+        return;
+    }
+
+    // 透過 Supabase Auth 登入（預設管理員信箱格式）
+    const { error } = await client.auth.signInWithPassword({ 
+        email: 'admin@studio.local', 
+        password: inputPwd 
+    });
+
+    if (error) {
+        alert("❌ 認證登入失敗：" + error.message);
+    } else {
+        alert("🟢 主理人認證成功！");
+        document.getElementById('admin-password-input').value = '';
+        // 登入成功後，onAuthStateChange 會自動觸發並更新 isAdmin 與 UI
+    }
+}
+
+// 🌟 改用 Supabase 進行登出
+async function handleAdminLogout() { 
+    try {
+        await client.auth.signOut();
+        isAdmin = false;
+        updateAdminUI();
+        switchTab(currentTab);
+        alert("已成功登出主理人模式。");
+    } catch (err) {
+        console.error("登出失敗:", err.message);
+    }
+}
+
+function updateAdminUI() {
+    const loggedOut = document.getElementById('admin-logged-out');
+    const loggedIn = document.getElementById('admin-logged-in');
+    const globalBadge = document.getElementById('global-admin-badge');
+    if (isAdmin) { 
+        loggedOut?.classList.add('hidden'); 
+        loggedIn?.classList.remove('hidden'); 
+        globalBadge?.classList.remove('hidden'); 
+    } else { 
+        loggedOut?.classList.remove('hidden'); 
+        loggedIn?.classList.add('hidden'); 
+        globalBadge?.classList.add('hidden'); 
+    }
+}
         
         // 彈窗模組開啟/關閉控制
         function openJoinModal(postId) { document.getElementById('join-post-id').value = postId; document.getElementById('join-modal').classList.remove('hidden'); }
