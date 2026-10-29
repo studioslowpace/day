@@ -607,28 +607,32 @@ function renderLegend() {
 
     const legendList = document.getElementById('legend-list');
     const titleArea = document.querySelector('.title-area'); 
-    let newBox = document.getElementById('new-legend-list');
-
     if (!legendList) return;
 
+    // 1. 確保 #new-legend-list 只會被建立一次
+    let newBox = document.getElementById('new-legend-list');
     if (!newBox) {
         newBox = document.createElement('div');
         newBox.id = 'new-legend-list';
         newBox.className = 'new-legend-box';
-        const topHeader = legendList.closest('.top-header') || legendList.parentNode; 
-        topHeader.parentNode.insertBefore(newBox, topHeader.nextSibling);
+        legendList.parentNode.insertBefore(newBox, legendList.nextSibling);
     }
 
-    legendList.innerHTML = '';
-    newBox.innerHTML = '';
+    // 2. 每次重新計算前，先清空並歸位
+    while (newBox.children.length > 0) {
+        legendList.appendChild(newBox.firstElementChild);
+    }
     newBox.style.display = 'none';
+    newBox.innerHTML = '';
 
+    // 3. 【關鍵修正】重新渲染帶有彩色方塊 (.box) 的圖例結構
     legendList.innerHTML = dbData.types.map((t, index) => `
         <div class="legend-item" onclick="openTypeModal(${index})" style="cursor:pointer;">
             <div class="box" style="background:${t.color}"></div>${t.name}
         </div>
     `).join('');
 
+    // 4. 計算高度並自動折行收納
     let maxAllowedHeight = titleArea ? titleArea.offsetHeight : 80;
     if (maxAllowedHeight <= 0) maxAllowedHeight = 80;
 
