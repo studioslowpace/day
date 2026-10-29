@@ -53,15 +53,15 @@
     </div>
 </div>
 
-<!-- 🔍 全域搜尋彈窗 -->
+<!-- 🔍 全域資料庫搜尋彈窗 -->
 <div id="searchModal" class="auth-modal" style="display: none;">
     <div class="auth-modal-content search-modal-content">
         <div class="search-modal-header">
-            <h3>全站內容搜尋</h3>
+            <h3>全站資料庫搜尋</h3>
             <button id="closeSearchModalBtn" class="search-close-btn">&times;</button>
         </div>
         <div class="auth-form-group">
-            <input type="text" id="globalSearchInput" placeholder="輸入關鍵字搜尋頁面、標題或文章內容..." />
+            <input type="text" id="globalSearchInput" placeholder="輸入關鍵字搜尋讀書會、文章或標題..." />
         </div>
         <div id="searchResults" class="search-results-list"></div>
     </div>
@@ -69,7 +69,7 @@
 
 <style>
     /* ==========================================================================
-       頁首基本設定與密碼/搜尋彈窗樣式
+       樣式設定
        ========================================================================== */
     .header-navbar {
         width: 100%;
@@ -95,7 +95,6 @@
     .header-logo-icon img { max-height: 50px; width: auto; }
     .header-logo-link:hover { cursor: pointer; opacity: 0.8; transition: opacity 0.2s; }
 
-    /* 管理員登入按鈕 */
     .admin-icon-btn {
         background: none; border: none; cursor: pointer; padding: 5px;
         display: flex; align-items: center; transition: transform 0.1s;
@@ -124,7 +123,6 @@
     .more-dropdown-content :global(a) { color: #333333 !important; padding: 12px 16px !important; text-decoration: none !important; display: block !important; text-align: left !important; }
     .more-dropdown-content :global(a:hover) { background-color: #f5f5f5 !important; color: #1465A3 !important; }
 
-    /* 🔐 彈窗專屬 CSS */
     .auth-modal {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.6); z-index: 30000; display: flex; justify-content: center; align-items: center;
@@ -339,7 +337,7 @@
             resizeTimeout = window.setTimeout(adjustNavItems, 100);
         });
 
-        // 🔍 網頁內容與連結綜合搜尋功能
+        // 🔍 Supabase 資料庫即時模糊搜尋
         const searchModal = document.getElementById('searchModal');
         const closeSearchModalBtn = document.getElementById('closeSearchModalBtn');
         const globalSearchInput = document.getElementById('globalSearchInput') as HTMLInputElement | null;
@@ -367,59 +365,77 @@
             };
         }
 
-        if (globalSearchInput && searchResults) {
-            globalSearchInput.oninput = (e) => {
-                const query = (e.target as HTMLInputElement).value.trim().toLowerCase();
-                if (!query) {
-                    searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">請輸入關鍵字搜尋...</div>';
-                    return;
-                }
+        // 🔍 多資料表並行搜尋
+let searchTimer: number;
+if (globalSearchInput && searchResults) {
+    globalSearchInput.oninput = (e) => {
+        const query = (e.target as HTMLInputElement).value.trim();
+        clearTimeout(searchTimer);
 
-                let matches: { title: string; snippet: string; url: string }[] = [];
-
-                // 1. 搜尋導覽列項目
-                allLinks.forEach(link => {
-                    const title = link.textContent?.trim() || '';
-                    const url = link.getAttribute('href') || '#';
-                    if (title.toLowerCase().includes(query)) {
-                        matches.push({ title, snippet: `導覽選單頁面: ${url}`, url });
-                    }
-                });
-
-                // 2. 搜尋當前頁面中的文章/段落文字 (可根據你的網頁結構調整選擇器，例如 article, p, h1, h2, h3)
-                const contentElements = document.querySelectorAll('main h1, main h2, main h3, main p, article h1, article h2, article h3, article p, .content h1, .content h2, .content h3, .content p');
-                contentElements.forEach(el => {
-                    const text = el.textContent?.trim() || '';
-                    if (text.toLowerCase().includes(query)) {
-                        // 尋找最近的標題或父層作為標題代表
-                        const heading = el.closest('article, section')?.querySelector('h1, h2, h3')?.textContent || '頁面內容段落';
-                        matches.push({
-                            title: heading,
-                            snippet: text.length > 60 ? text.substring(0, 60) + '...' : text,
-                            url: window.location.pathname + '#'
-                        });
-                    }
-                });
-
-                // 也可以選擇從 Supabase 資料庫搜尋文章內容 (如果有建立文章資料表如 posts)
-                // 範例結構：await window.client.from('posts').select('title, content, slug').ilike('content', `%${query}%`)
-
-                if (matches.length === 0) {
-                    searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">找不到符合的網頁內容</div>';
-                } else {
-                    // 去除重複的網址或項目
-                    const uniqueMatches = Array.from(new Set(matches.map(m => m.snippet)))
-                        .map(snippet => matches.find(m => m.snippet === snippet)!);
-
-                    searchResults.innerHTML = uniqueMatches.map(m => `
-                        <a href="${m.url}" class="search-result-item" onclick="document.getElementById('searchModal').style.display='none';">
-                            <strong>${m.title}</strong>
-                            <div style="font-size: 0.85rem; color: #555; margin-top: 3px;">${m.snippet}</div>
-                        </a>
-                    `).join('');
-                }
-            };
+        if (!query) {
+            searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">請輸入關鍵字搜尋...</div>';
+            return;
         }
+
+        searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">搜尋中...</div>';
+
+        searchTimer = window.setTimeout(async () => {
+            let matches: { title: string; snippet: string; url: string }[] = [];
+
+            // 1. 先比對導覽列選單
+            allLinks.forEach(link => {
+                const title = link.textContent?.trim() || '';
+                const url = link.getAttribute('href') || '#';
+                if (title.toLowerCase().includes(query.toLowerCase())) {
+                    matches.push({ title, snippet: `導覽選單: ${url}`, url });
+                }
+            });
+
+            // 2. 同時從多個 Supabase 資料表查詢
+            if (window.client) {
+                try {
+                    // 💡 這裡列出你要搜尋的所有資料表與對應的欄位
+                    // 請把 'posts', 'book_clubs', 'events' 換成你實際的資料表名稱
+                    const queries = [
+                        window.client.from('posts').select('title, content, url').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(5),
+                        window.client.from('book_clubs').select('title, description, url').or(`title.ilike.%${query}%,description.ilike.%${query}%`).limit(5),
+                        window.client.from('events').select('title, details, url').or(`title.ilike.%${query}%,details.ilike.%${query}%`).limit(5)
+                    ];
+
+                    // 使用 Promise.all 同時發送所有查詢
+                    const results = await Promise.all(queries);
+
+                    results.forEach(({ data, error }) => {
+                        if (!error && data) {
+                            data.forEach((item: any) => {
+                                // 兼容不同的內文欄位名稱 (content, description, details)
+                                const snippetText = item.content || item.description || item.details || '';
+                                matches.push({
+                                    title: item.title || '無標題',
+                                    snippet: snippetText.length > 50 ? snippetText.substring(0, 50) + '...' : snippetText,
+                                    url: item.url || '#'
+                                });
+                            });
+                        }
+                    });
+                } catch (err) {
+                    console.error('Supabase 多表搜尋連線異常:', err);
+                }
+            }
+
+            if (matches.length === 0) {
+                searchResults.innerHTML = '<div style="color: #888; text-align: center; padding: 10px;">找不到符合的內容</div>';
+            } else {
+                searchResults.innerHTML = matches.map(m => `
+                    <a href="${m.url}" class="search-result-item" onclick="document.getElementById('searchModal').style.display='none';">
+                        <strong>${m.title}</strong>
+                        <div style="font-size: 0.85rem; color: #555; margin-top: 3px;">${m.snippet}</div>
+                    </a>
+                `).join('');
+            }
+        }, 300);
+    };
+}
     };
 
     setupHeaderAuth();
