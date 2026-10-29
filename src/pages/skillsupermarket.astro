@@ -1186,7 +1186,7 @@ textarea::placeholder {
         const POSTS_TABLE = 'posts';
         
         const supabaseInstance = window.supabase || supabase;
-        const client = supabase.createClient(supabaseUrl, supabaseKey);
+        const client = supabaseInstance.createClient(supabaseUrl, supabaseKey);
         
         let posts = [];                 // 存放從資料庫撈出來的所有委託案件
         let skills = [];                // 存放所有鄰里人技能檔案
