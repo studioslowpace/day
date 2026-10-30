@@ -171,26 +171,31 @@ export const prerender = false;
             }
         }
 
-        // 圖片上傳處理函數
-        function handleNewImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                selectedNewCompressedFile = file;
-                const preview = document.getElementById('new-preview');
-                preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
-            }
+// 方式 A：在「新增」視窗選擇圖片時觸發
+function handleNewImageUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        selectedNewCompressedFile = file;
+        const preview = document.getElementById('new-preview');
+        if (preview) {
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
         }
+    }
+}
 
-        function handleEditImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                selectedCompressedFile = file;
-                const preview = document.getElementById('edit-preview');
-                preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
-            }
+// 方式 A：在「編輯」視窗選擇圖片時觸發
+function handleEditImageUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        selectedCompressedFile = file;
+        const preview = document.getElementById('edit-preview');
+        if (preview) {
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
         }
+    }
+}
 
         // 視窗控制
         window.openAddModalWithAutoOrder = function() {
