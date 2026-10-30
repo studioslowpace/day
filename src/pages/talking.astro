@@ -26,6 +26,84 @@ export const prerender = false;
             <button id="open-add-modal-btn" class="admin-btn add-trigger" style="display: none;" onclick="window.openAddModalWithAutoOrder()">➕ 加入全新談話資料</button>
         </div>
 
+                        <div id="add-modal" class="modal-overlay">
+                    <div class="modal-box">
+                        <h3 style="margin-top:0; color:#2c3e2f; border-bottom:1px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                            <span>加入全新談話資料</span>
+                            <span style="cursor:pointer; font-size:20px; color:#aaa;" onclick="toggleAddModal(false)">×</span>
+                        </h3>
+                        
+                        <label style="font-size:12px; color:#777; display:block; margin-top:10px;">活動標題：</label>
+                        <input type="text" id="new-title" class="editing-input" placeholder="請輸入全新活動的標題">
+                        
+                        <label style="font-size:12px; color:#777; display:block; margin-top:5px;">排序權重 (數字越大排在越前面。系統已自動加 1 預設排在最頂部)：</label>
+                        <input type="number" id="new-sort" class="editing-input" value="1">
+
+                        <label style="font-size:12px; color:#777; display:block; margin-top:5px;">活動內容描述：</label>
+                        <textarea id="new-desc" class="editing-textarea" placeholder="請輸入活動的詳細內容介紹..."></textarea>
+                        
+        <label style="font-size:12px; color:#2c3e2f; font-weight:bold; display:block; margin-top:15px; border-top:1px dashed #ddd; padding-top:10px;">相片提供方式（二選一）：</label>
+        
+        <div id="new-img-upload-wrapper" style="margin-top: 8px;">
+            <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">方式 A：直接上傳相片檔案</span>
+            <input type="file" id="new-file" accept="image/*" onchange="handleNewImageUpload(event)">
+            <span id="new-compress-status" class="compressing-status" style="display:none;">⏳ 正在智能壓縮圖片...</span>
+        </div>
+        
+        <div id="new-img-path-wrapper" style="margin-top: 12px;">
+            <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">方式 B：手動輸入相片路徑或 GitHub 連結</span>
+            <input type="text" id="new-img-path" class="editing-input" placeholder="請輸入相片相對路徑或外部連結 (例如: images/photo.jpg)">
+        </div>
+                        
+                        <img id="new-preview" class="upload-preview" style="display:none;>
+
+                        <div style="margin-top: 20px; border-top:1px solid #eee; padding-top:15px; text-align:right; display:flex; justify-content:flex-end; gap:10px;">
+                            <button class="admin-btn" style="background:#9b9b9b;" onclick="toggleAddModal(false)">取消</button>
+                            <button class="admin-btn" style="background:#2c3e2f;" onclick="createNewTalk()">🚀 確定加入資料</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="edit-modal" class="modal-overlay">
+                    <div class="modal-box">
+                        <h3 style="margin-top:0; color:#2c3e2f; border-bottom:1px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                            <span>✏️ 修改談話活動資料</span>
+                            <span style="cursor:pointer; font-size:20px; color:#aaa;" onclick="toggleEditModal(false)">×</span>
+                        </h3>
+                        
+                        <input type="hidden" id="edit-target-id">
+
+                        <label style="font-size:12px; color:#777; display:block; margin-top:10px;">活動標題：</label>
+                        <input type="text" id="edit-title" class="editing-input">
+                        
+                        <label style="font-size:12px; color:#777; display:block; margin-top:5px;">排序權重 (數字越大排在越前面)：</label>
+                        <input type="number" id="edit-sort" class="editing-input">
+
+                        <label style="font-size:12px; color:#777; display:block; margin-top:5px;">活動內容：</label>
+                        <textarea id="edit-desc" class="editing-textarea"></textarea>
+                        
+        <label style="font-size:12px; color:#2c3e2f; font-weight:bold; display:block; margin-top:15px; border-top:1px dashed #ddd; padding-top:10px;">相片提供方式（二選一 / 不更換請留空）：</label>
+        
+        <div id="edit-img-upload-wrapper" style="margin-top: 8px;">
+            <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">方式 A：選取新相片覆蓋</span>
+            <input type="file" id="edit-file" accept="image/*" onchange="handleEditImageUpload(event)">
+            <span id="edit-compress-status" class="compressing-status" style="display:none;">⏳ 正在智能壓縮圖片...</span>
+        </div>
+        
+        <div id="edit-img-path-wrapper" style="margin-top: 12px;">
+            <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">方式 B：手動修改相片路徑或網址</span>
+            <input type="text" id="edit-img-path" class="editing-input" placeholder="請輸入相片相對路徑或外部連結">
+        </div>
+
+                        <img id="edit-preview" class="upload-preview" >
+
+                        <div style="margin-top: 20px; border-top:1px solid #eee; padding-top:15px; text-align:right; display:flex; justify-content:flex-end; gap:10px;">
+                            <button class="admin-btn" style="background:#9b9b9b;" onclick="toggleEditModal(false)">取消</button>
+                            <button class="admin-btn" style="background:#2c3e2f;" onclick="saveChangesFromServer()">💾 儲存更新</button>
+                        </div>
+                    </div>
+                </div>
+
         <!-- 談話列表容器 -->
         <div id="events-container" style="width: 100%;">
             <p style="text-align:center;">資料載入中...</p>
