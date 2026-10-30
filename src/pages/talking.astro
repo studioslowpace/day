@@ -57,18 +57,21 @@ let htmlString = "";
 talks.forEach((talk, index) => {
     const talkUrl = `/talking/${encodeURIComponent(talk.title)}`;
     htmlString += `
-        <a href="${talkUrl}" style="display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-decoration: none; color: inherit; cursor: pointer; height: 100%;">
-            <!-- 1. 標題置於最上方 -->
-            <h2 style="margin-top: 0; margin-bottom: 15px; color: #2c3e2f; font-size: 18px; line-height: 1.4;">
-                ${talk.title}
-            </h2>
-
-            <!-- 2. 相片置於中間 -->
-            <div style="width: 100%; margin-bottom: 15px;">
-                <img src="${talk.image_url}" alt="${talk.title}" style="width: 100%; height: 180px; border-radius: 8px; object-fit: cover;" oncontextmenu="return false;" ondragstart="return false;">
+        <a href="${talkUrl}" class="talk-card">
+            <!-- 1. 標題置中，下方加入淺藍色線條 -->
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h2 style="margin: 0 0 10px 0; color: #2c3e2f; font-size: 18px; line-height: 1.4;">
+                    ${talk.title}
+                </h2>
+                <div style="width: 40px; height: 2px; background-color: #a0c4ff; margin: 0 auto;"></div>
             </div>
 
-            <!-- 3. 內容置於下方，限制只顯示 3 行 -->
+            <!-- 2. 相片以原本比例顯示 -->
+            <div style="width: 100%; margin-bottom: 15px; overflow: hidden; border-radius: 8px;">
+                <img src="${talk.image_url}" alt="${talk.title}" style="width: 100%; height: auto; display: block; object-fit: contain;" oncontextmenu="return false;" ondragstart="return false;">
+            </div>
+
+            <!-- 3. 內容限制最多顯示 3 行 -->
             <div style="flex-grow: 1;">
                 <p style="color: #444; line-height: 1.6; font-size: 14px; margin: 0; 
                           display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
@@ -266,6 +269,28 @@ container.innerHTML = htmlString;
         .order-badge { display: inline-block; background: #777777; color: white; font-size: 11px; padding: 1px 5px; border-radius: 3px; margin-left: 8px; font-weight: bold; vertical-align: middle; }
         .edit-badge { display: inline-block; background: #ff9800; color: white; font-size: 12px; padding: 2px 6px; border-radius: 3px; margin-left: 8px; cursor: pointer; vertical-align: middle; }
 
+        /* 無背景色、無框線的卡片基礎樣式與滑鼠 Hover 效果 */
+        .talk-card {
+            display: flex;
+            flex-direction: column;
+            background: transparent; /* 無顏色、無背景 */
+            border: none;            /* 無框線 */
+            padding: 20px;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            height: 100%;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        /* 滑鼠滑到時的效果（微幅上浮、增加淡淡的陰影與圓角背景，讓互動更明顯） */
+        .talk-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.6); /* 滑過時才浮現柔和底色 */
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+        
         /* 響應式設定：手機模式時橫向只排 1 個卡片 */
         @media (max-width: 768px) {
             .title-container { flex-wrap: wrap; gap: 20px; justify-content: center; }
