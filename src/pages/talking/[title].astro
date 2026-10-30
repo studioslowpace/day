@@ -33,9 +33,6 @@ const formattedContent = talk.description ? talk.description.replace(/\n/g, '<br
 
 <BaseLayout title={`${talk.title} — 客舍談話`}>
     <main class="container" style="max-width: 900px; margin: 40px auto; padding: 0 20px;">
-        <div style="margin-bottom: 20px;">
-            <a href="/talking" style="text-decoration: none; color: #666; font-size: 14px;">&larr; 返回談話總覽</a>
-        </div>
 
         <div style="background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
@@ -48,7 +45,7 @@ const formattedContent = talk.description ? talk.description.replace(/\n/g, '<br
             </div>
 
             <div style="margin-bottom: 30px;">
-                <img src={talk.image_url} alt={talk.title} style="width: 100%; max-height: 500px; object-fit: contain; border-radius: 8px; background: #1a1a1a;" oncontextmenu="return false;" ondragstart="return false;" />
+                <img src={talk.image_url} alt={talk.title} style="width: 100%; max-height: 500px; object-fit: contain; border-radius: 8px; " oncontextmenu="return false;" ondragstart="return false;" />
             </div>
 
             <div style="font-size: 16px; line-height: 2; color: #333; text-align: justify; white-space: pre-wrap;">
