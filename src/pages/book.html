@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空間共讀 - 天空藍對接版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans CJK TC", sans-serif;
+            background-color: #f0f7fc; /* 淡淡的天空藍底色 */
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen text-[#2A3744] flex flex-col pb-12">
+
+    <!-- ================= 頂部管理員控制列 ================= -->
+    <div id="admin-navbar" class="hidden bg-white border-b border-sky-100 shadow-md w-full z-50 transition-all duration-300">
+        <div class="max-w-4xl mx-auto p-4 md:p-6">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-100 mb-4">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="shield" class="text-sky-600 w-5 h-5"></i>
+                    <h2 class="text-base font-bold text-gray-800">管理員後台系統</h2>
+                </div>
+                <button onclick="toggleAdminNavbar()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="admin-logged-out" class="flex flex-col md:flex-row md:items-center gap-3">
+                <p class="text-xs text-gray-400 md:max-w-md">管理員預設密碼：<code class="bg-gray-100 px-1 py-0.5 rounded text-sky-700">admin123</code></p>
+                <div class="flex gap-2 flex-1 max-w-sm">
+                    <input type="password" id="admin-password-input" placeholder="輸入密碼" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 text-xs tracking-widest">
+                    <button onclick="handleAdminLogin()" class="px-4 py-2 bg-sky-600 text-white font-bold text-xs rounded-xl hover:bg-sky-700 whitespace-nowrap">認證登入</button>
+                </div>
+            </div>
+            <div id="admin-logged-in" class="hidden flex flex-col md:flex-row md:items-start justify-between gap-4">
+                <div class="bg-emerald-50 text-emerald-800 text-xs p-3 rounded-xl flex items-center space-x-2">
+                    <i data-lucide="check-circle" class="w-4 h-4 flex-shrink-0"></i>
+                    <span class="font-bold">管理員模式已啟用，您可點擊 🗑️ 刪除雲端貼文。</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-100 w-full md:w-auto">
+                    <input type="password" id="new-password" placeholder="輸入新密碼" class="p-2 bg-white border border-gray-200 rounded-xl text-xs w-28 focus:outline-none">
+                    <input type="password" id="confirm-password" placeholder="再次確認密碼" class="p-2 bg-white border border-gray-200 rounded-xl text-xs w-28 focus:outline-none">
+                    <button onclick="handleChangePassword()" class="px-3 py-2 bg-gray-800 text-white text-xs font-bold rounded-xl hover:bg-gray-900 transition-all">修改密碼</button>
+                    <button onclick="handleAdminLogout()" class="px-3 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all">登出</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 網頁主導覽列 ================= -->
+    <header id="main-header" class="w-full bg-white/80 backdrop-blur-md border-b border-sky-100 py-3 px-4 sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div onclick="toggleAdminNavbar()" class="flex items-center space-x-3 cursor-pointer group select-none">
+                <!-- 移除外框與陰影的 Logo -->
+                <img src="https://static.wixstatic.com/media/fc4bd9_7b52415be7aa42219d5b7a68fc82e136~mv2.png" alt="Logo" class="w-10 h-10 object-cover group-hover:opacity-80 transition-all" />
+                <div>
+                    <span class="font-bold tracking-wider text-gray-800 text-sm block">空間共讀</span>
+                    <span class="text-[10px] text-gray-400 block -mt-0.5">Let's Read in Space</span>
+                </div>
+            </div>
+            <button id="header-upload-btn" onclick="openUploadModal()" class="text-xs bg-sky-600 text-white font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-sky-700 transition-all">+ 發起共讀</button>
+        </div>
+    </header>
+
+    <!-- ================= 視窗區塊一：主探索探索頁面 (首頁列表) ================= -->
+    <main id="main-content-layout" class="w-full max-w-4xl mx-auto px-4 md:px-6 pt-6 flex-1">
+        <div id="global-admin-badge" class="hidden text-center bg-sky-100 border border-sky-200 text-sky-800 text-xs py-2 rounded-xl font-bold mb-6 animate-pulse">🔑 管理員權限運作中 — 貼文同步剷除功能已解鎖</div>
+        <div class="space-y-6">
+            <!-- 換上天空藍漸層橫幅與書本圖像 -->
+            <div class="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-sky-200 to-blue-100 relative overflow-hidden shadow-sm">
+                <h1 class="text-2xl md:text-3xl font-bold mb-1 tracking-wide text-sky-900">你好，書友</h1>
+                <p class="text-xs md:text-sm text-sky-700/80 tracking-wider">找一本書，找一個靈魂共鳴。</p>
+                <div class="absolute right-6 bottom-4 text-4xl md:text-5xl opacity-80 select-none">📖</div>
+            </div>
+            <h2 class="text-xl font-bold tracking-widest text-sky-900 border-l-4 border-sky-500 pl-3">探索新書友</h2>
+            <div id="posts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+    </main>
+
+    <!-- ================= 視窗區塊二：詳細貼文獨立頁面 (內含返回前頁按鈕) ================= -->
+    <main id="single-post-layout" class="hidden w-full max-w-2xl mx-auto px-4 pt-6 flex-1">
+        <div class="mb-4">
+            <button onclick="backToHomeList()" class="inline-flex items-center space-x-2 text-xs font-bold text-sky-600 hover:text-sky-700 bg-white px-4 py-2 rounded-xl border border-sky-100 shadow-sm transition-all">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                <span>← 返回探索首頁</span>
+            </button>
+        </div>
+        <div id="single-post-render-target"></div>
+    </main>
+
+    <!-- ================= 視窗三：參與者報名彈窗 ================= -->
+    <div id="join-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-xl text-sm">
+            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                <h3 class="text-base font-bold text-gray-800 flex items-center gap-2"><i data-lucide="pen-tool" class="w-4 h-4 text-sky-600"></i><span>填寫報名資料</span></h3>
+                <button onclick="closeJoinModal()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="join-form" onsubmit="handleJoinSubmit(event)" class="space-y-3">
+                <input type="hidden" id="join-post-id">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">您的名字 / 暱稱</label>
+                    <input type="text" id="join-name" required placeholder="例如：阿明" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">您的 Instagram 帳號</label>
+                    <input type="text" id="join-ig" required placeholder="例如：ming_reads" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-sky-600 text-white font-bold rounded-xl shadow-md hover:bg-sky-700 transition-all">確認送出報名</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= 視窗四：發起共讀計畫彈窗 ================= -->
+    <div id="upload-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-xl text-sm max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800">發起共讀計畫</h3>
+                <button onclick="closeUploadModal()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="post-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <div class="bg-sky-50/50 p-3 rounded-2xl border border-sky-100">
+                    <label class="block text-xs font-bold text-gray-500 mb-2">發起人個人頭像</label>
+                    <div class="flex items-center space-x-4">
+                        <div onclick="toggleEmojiBank()" id="current-avatar-preview" class="w-14 h-14 rounded-full bg-sky-50 border-2 border-sky-400 flex items-center justify-center text-3xl cursor-pointer shadow-sm">🙋‍♂️</div>
+                        <div class="text-xs text-gray-400"><p class="font-bold text-gray-600">這是您在貼文上顯示的圖示</p><p class="mt-0.5">點擊頭像框即可選擇更多風格頭像</p></div>
+                    </div>
+                    <input type="hidden" id="selected-emoji" value="🙋‍♂️">
+                    <div id="emoji-bank" class="hidden mt-3 pt-3 border-t border-gray-200/60">
+                        <div class="grid grid-cols-6 gap-2 text-center text-2xl">
+                            <span onclick="selectEmoji('🙋‍♂️', this)" class="cursor-pointer p-1 rounded-xl bg-sky-100 border border-sky-300">🙋‍♂️</span>
+                            <span onclick="selectEmoji('🙋‍♀️', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🙋‍♀️</span>
+                            <span onclick="selectEmoji('🧑‍💻', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🧑‍💻</span>
+                            <span onclick="selectEmoji('👩‍🎨', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">👩‍🎨</span>
+                            <span onclick="selectEmoji('🐱', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🐱</span>
+                            <span onclick="selectEmoji('🦊', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🦊</span>
+                            <span onclick="selectEmoji('🕶️', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🕶️</span>
+                            <span onclick="selectEmoji('☕', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">☕</span>
+                            <span onclick="selectEmoji('🪐', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🪐</span>
+                            <span onclick="selectEmoji('🍀', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🍀</span>
+                            <span onclick="selectEmoji('🧸', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🧸</span>
+                            <span onclick="selectEmoji('🔮', this)" class="cursor-pointer p-1 rounded-xl hover:bg-white border border-transparent">🔮</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">書名</label>
+                    <input type="text" id="bookTitle" required placeholder="例如：白夜行" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">您的暱稱</label><input type="text" id="authorName" required placeholder="Max" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500"></div>
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">期望對象標籤</label><input type="text" id="targetTag" required placeholder="想認識：女" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500"></div>
+                </div>
+                <div><label class="block text-xs font-bold text-gray-500 mb-1">期待讀完時間</label><input type="text" id="duration" required placeholder="期待 4 週讀完" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500"></div>
+                <div><label class="block text-xs font-bold text-gray-500 mb-1">想讀的原因...</label><textarea id="content" required rows="3" placeholder="吸引書友加入吧..." class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:border-sky-500"></textarea></div>
+                <button type="submit" class="w-full py-3 bg-sky-600 text-white font-bold rounded-xl shadow-md hover:bg-sky-700 transition-all">發布並上傳</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= JavaScript 核心控制系統 ================= -->
+    <script>
+        const defaultPassword = "admin123";
+        let posts = []; 
+        let isAdmin = false;
+        let currentViewingPostId = null; 
+
+        window.onload = function() {
+            sendToWix("FETCH_POSTS", {});
+            setupRandomDefaultAvatar();
+            lucide.createIcons();
+        };
+
+        window.addEventListener("message", (event) => {
+            const { type, data } = event.data;
+            if (type === "SYNC_POSTS_FROM_CLOUD") {
+                posts = data || [];
+                if (currentViewingPostId !== null) {
+                    renderSinglePostView(currentViewingPostId);
+                } else {
+                    renderPosts();
+                }
+            }
+        });
+
+        function sendToWix(type, data) {
+            window.parent.postMessage({ type: type, data: data }, "*");
+        }
+
+        function formatBookTitle(title) {
+            title = title.trim();
+            if (!title.startsWith('《') && !title.endsWith('》')) return `《${title}》`;
+            return title;
+        }
+
+        function goToPostDetail(postId) {
+            currentViewingPostId = postId;
+            document.getElementById('main-content-layout').classList.add('hidden');
+            document.getElementById('header-upload-btn').classList.add('hidden');
+            document.getElementById('single-post-layout').classList.remove('hidden');
+            renderSinglePostView(postId);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function backToHomeList() {
+            currentViewingPostId = null;
+            document.getElementById('single-post-layout').classList.add('hidden');
+            document.getElementById('main-content-layout').classList.remove('hidden');
+            document.getElementById('header-upload-btn').classList.remove('hidden');
+            renderPosts();
+        }
+
+        function renderPosts() {
+            const container = document.getElementById('posts-container');
+            if(!container) return;
+            container.innerHTML = posts.length === 0 ? '<p class="text-xs text-gray-400 py-8 text-center col-span-3">目前沒有共讀計畫，快來發起第一個吧！</p>' : '';
+
+            posts.forEach(post => {
+                const count = post.participants ? post.participants.length : 0;
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl p-5 shadow-sm border border-sky-100/70 hover:shadow-md hover:border-sky-200 transition-all flex flex-col justify-between relative cursor-pointer group";
+                
+                card.onclick = (e) => {
+                    if (e.target.closest('button')) return; 
+                    goToPostDetail(post.id);
+                };
+
+                const deleteBtnHtml = isAdmin 
+                    ? `<button onclick="deletePost(${post.id})" class="absolute top-4 right-4 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white w-7 h-7 flex items-center justify-center rounded-xl text-sm font-bold transition-all shadow-sm z-10" title="剷除貼文">🗑️</button>` 
+                    : '';
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center space-x-3 w-full">
+                                <div class="w-10 h-10 rounded-full ${post.bgColor || 'bg-sky-50'} flex items-center justify-center text-lg shadow-inner flex-shrink-0">${post.emoji || '🙋‍♂️'}</div>
+                                <div class="${isAdmin ? 'pr-8' : 'pr-2'} w-full">
+                                    <h3 class="text-base font-bold text-gray-800 break-words group-hover:text-sky-600 transition-colors">${post.bookTitle}</h3>
+                                    <p class="text-[11px] text-gray-400 mt-0.5">${post.author} • ${count}人已報名</p>
+                                </div>
+                            </div>
+                        </div>
+                        ${deleteBtnHtml}
+                        ${isAdmin ? '' : `<div class="mb-2"><span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 font-medium">${post.target}</span></div>`}
+                        <p class="text-sm leading-relaxed text-gray-600 my-2 tracking-wide line-clamp-3">${post.content}</p>
+                    </div>
+                    <div class="pt-3 mt-2 border-t border-gray-50 flex justify-between items-center">
+                        <div class="text-[11px] text-gray-400"><span class="font-medium text-gray-500">${post.duration}</span> • <span>${post.timeAgo}</span></div>
+                        <button onclick="openJoinModal(${post.id})" class="text-xs bg-sky-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-sky-700 transition-all">立即報名</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function renderSinglePostView(postId) {
+            const post = posts.find(p => p.id === postId);
+            const targetDiv = document.getElementById('single-post-render-target');
+            if (!post || !targetDiv) return;
+
+            const currentParticipants = post.participants || [];
+
+            let participantsListHtml = currentParticipants.length === 0 
+                ? `<p class="text-xs text-gray-400 py-4 col-span-2 text-center">目前尚無人報名，快來填寫資料成為第一個吧！</p>`
+                : currentParticipants.map(person => `
+                    <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                        <span class="font-bold text-gray-700 text-xs">${person.name}</span>
+                        <span class="text-[11px] text-sky-600 bg-sky-50/30 px-2 py-1 rounded-md border border-sky-100">IG: @${person.ig}</span>
+                    </div>
+                `).join('');
+
+            targetDiv.innerHTML = `
+                <div class="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-sky-100 w-full space-y-6">
+                    <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-14 h-14 rounded-full ${post.bgColor || 'bg-sky-50'} flex items-center justify-center text-3xl shadow-inner">${post.emoji || '🙋‍♂️'}</div>
+                            <div>
+                                <h1 class="text-2xl font-bold text-gray-900">${post.bookTitle}</h1>
+                                <p class="text-sm text-gray-500 mt-1">發起人：<span class="font-semibold text-gray-700">${post.author}</span></p>
+                            </div>
+                        </div>
+                        <span class="text-xs px-3 py-1.5 rounded-full bg-sky-50 text-sky-700 font-bold">${post.target}</span>
+                    </div>
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold text-gray-400 tracking-widest uppercase">共讀企劃說明</h3>
+                        <p class="text-base text-gray-700 leading-relaxed tracking-wide whitespace-pre-line">${post.content}</p>
+                    </div>
+                    <div class="bg-sky-50/30 rounded-2xl p-4 grid grid-cols-2 gap-4 text-sm border border-sky-100">
+                        <div><span class="block text-xs text-gray-400 mb-0.5">期待進度</span><span class="font-bold text-gray-800">${post.duration}</span></div>
+                        <div><span class="block text-xs text-gray-400 mb-0.5">發布時間</span><span class="font-bold text-gray-800">${post.timeAgo}</span></div>
+                    </div>
+                    <div class="pt-2 flex items-center justify-between">
+                        <div class="text-sm text-gray-600 flex items-center space-x-1"><i data-lucide="users" class="w-4 h-4 text-sky-600"></i><span>已有 <strong class="text-gray-900 font-bold text-base">${currentParticipants.length}</strong> 人成功報名</span></div>
+                        <button onclick="openJoinModal(${post.id})" class="bg-sky-600 text-white font-bold px-5 py-2.5 rounded-xl text-xs hover:bg-sky-700 transition-all shadow-md">立即填寫報名</button>
+                    </div>
+                    <div class="pt-6 border-t border-gray-100 space-y-3">
+                        <h3 class="text-xs font-bold text-gray-400 tracking-widest uppercase flex items-center gap-1.5"><i data-lucide="award" class="w-3.5 h-3.5 text-sky-500"></i><span>已報名書友名單 (${currentParticipants.length})</span></h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">${participantsListHtml}</div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        // ================= 其它控制元件 =================
+        function handleJoinSubmit(event) {
+            event.preventDefault();
+            const postId = parseInt(document.getElementById('join-post-id').value);
+            sendToWix("ADD_PARTICIPANT", { postId, name: document.getElementById('join-name').value, ig: document.getElementById('join-ig').value });
+            alert(`🎉 報名訊息已成功傳送至雲端！`);
+            closeJoinModal();
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const bgColors = ['bg-sky-100', 'bg-blue-100', 'bg-indigo-100', 'bg-teal-100', 'bg-cyan-100', 'bg-slate-100'];
+            sendToWix("CREATE_POST", {
+                id: Date.now(),
+                bookTitle: formatBookTitle(document.getElementById('bookTitle').value),
+                author: document.getElementById('authorName').value,
+                target: document.getElementById('targetTag').value,
+                content: document.getElementById('content').value,
+                duration: document.getElementById('duration').value,
+                timeAgo: "剛剛",
+                emoji: document.getElementById('selected-emoji').value,
+                bgColor: bgColors[Math.floor(Math.random() * bgColors.length)],
+                participants: []
+            });
+            closeUploadModal();
+            setupRandomDefaultAvatar();
+        }
+
+        function deletePost(postId) {
+            if (confirm("⚠️ 系統提示\n\n確定要完全從 Wix 雲端資料庫中剷除此貼文嗎？")) {
+                sendToWix("DELETE_POST", { postId });
+                if (currentViewingPostId === postId) backToHomeList();
+            }
+        }
+
+        function toggleEmojiBank() { document.getElementById('emoji-bank').classList.toggle('hidden'); }
+        function setupRandomDefaultAvatar() {
+            const initialEmojis = ['🙋‍♂️', '🙋‍♀️', '🧑‍💻', '👩‍🎨', '🐱', '🦊', '🕶️', '☕'];
+            const randomEmoji = initialEmojis[Math.floor(Math.random() * initialEmojis.length)];
+            document.getElementById('selected-emoji').value = randomEmoji;
+            document.getElementById('current-avatar-preview').innerText = randomEmoji;
+        }
+        function selectEmoji(emoji, element) {
+            document.getElementById('selected-emoji').value = emoji;
+            document.getElementById('current-avatar-preview').innerText = emoji;
+            const items = document.querySelectorAll('#emoji-bank span');
+            items.forEach(item => { item.classList.remove('bg-sky-100', 'border-sky-300'); item.classList.add('hover:bg-white', 'border-transparent'); });
+            element.classList.add('bg-sky-100', 'border-sky-300');
+        }
+        function toggleAdminNavbar() { const navbar = document.getElementById('admin-navbar'); if(navbar) navbar.classList.toggle('hidden'); lucide.createIcons(); }
+        function handleAdminLogin() { const inputPwd = document.getElementById('admin-password-input').value; const savedPwd = localStorage.getItem('admin_pwd') || defaultPassword; if (inputPwd === savedPwd) { isAdmin = true; updateAdminUI(); if(currentViewingPostId !== null) { renderSinglePostView(currentViewingPostId); } else { renderPosts(); } document.getElementById('admin-password-input').value = ''; } else { alert("密碼錯誤！"); } }
+        function handleAdminLogout() { isAdmin = false; updateAdminUI(); if(currentViewingPostId !== null) { renderSinglePostView(currentViewingPostId); } else { renderPosts(); } }
+        function handleChangePassword() { const newPwd = document.getElementById('new-password').value.trim(); const confirmPwd = document.getElementById('confirm-password').value.trim(); if (!newPwd) { alert("新密碼不能為空！"); return; } if (newPwd !== confirmPwd) { alert("兩次輸入的密碼不一致！"); return; } localStorage.setItem('admin_pwd', newPwd); alert("🔒 密碼更改成功！"); document.getElementById('new-password').value = ''; document.getElementById('confirm-password').value = ''; }
+        function updateAdminUI() { const loggedOut = document.getElementById('admin-logged-out'); const loggedIn = document.getElementById('admin-logged-in'); const globalBadge = document.getElementById('global-admin-badge'); if (isAdmin) { loggedOut?.classList.add('hidden'); loggedIn?.classList.remove('hidden'); globalBadge?.classList.remove('hidden'); } else { loggedOut?.classList.remove('hidden'); loggedIn?.classList.add('hidden'); globalBadge?.classList.add('hidden'); } }
+        function openJoinModal(postId) { document.getElementById('join-post-id').value = postId; document.getElementById('join-modal').classList.remove('hidden'); }
+        function closeJoinModal() { document.getElementById('join-modal').classList.add('hidden'); document.getElementById('join-form').reset(); }
+        function openUploadModal() { document.getElementById('upload-modal').classList.remove('hidden'); }
+        function closeUploadModal() { document.getElementById('post-form').reset(); document.getElementById('upload-modal').classList.add('hidden'); document.getElementById('emoji-bank').classList.add('hidden'); }
+    </script>
+</body>
+</html>
