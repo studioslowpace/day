@@ -9,48 +9,80 @@ const decodedTitle = decodeURIComponent(title || '');
 const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
 const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
 
-// 即時向 Supabase 查詢該筆談話資料
+// 1. 查詢當前談話資料
 const response = await fetch(`${supabaseUrl}/rest/v1/talks?title=eq.${encodeURIComponent(decodedTitle)}&select=*`, {
-  headers: {
-    'apikey': supabaseKey,
-    'Authorization': `Bearer ${supabaseKey}`
-  }
+    headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`
+    }
 });
 
 if (!response.ok) {
-  throw new Error('無法取得談話資料');
+    throw new Error('無法取得談話資料');
 }
 
 const records = await response.json();
 const talk = records[0] || null;
 
 if (!talk) {
-  return Astro.redirect('/404');
+    return Astro.redirect('/404');
 }
+
+// 2. 順便抓取所有談話列表，用來做「切換其他標題」的清單
+const listResponse = await fetch(`${supabaseUrl}/rest/v1/talks?select=title&order=sort_order.desc`, {
+    headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`
+    }
+});
+const allTalks = listResponse.ok ? await listResponse.json() : [];
 
 const formattedContent = talk.description ? talk.description.replace(/\n/g, '<br>') : '';
 ---
 
 <BaseLayout title={`${talk.title} — 客舍談話`}>
-    <main class="container" style="max-width: 900px; margin: 40px auto; padding: 0 20px;">
+    <main class="container" style="max-width: 1100px; margin: 40px auto; padding: 0 20px;">
 
         <div style="background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h1 style="font-size: 28px; color: #2c3e2f; margin: 0; font-weight: normal;">{talk.title}</h1>
-                
-                <!-- 管理員修改/刪除按鈕 (預設隱藏，前端 JS 驗證登入後顯示) -->
-                <div id="admin-action-btns" style="display: none; gap: 10px;">
-                    <button class="btn-edit" onclick={`window.openEditModal(${talk.id})`}>修改</button>
+            
+            <!-- 頂部標題與切換導覽列 -->
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <h1 style="font-size: 28px; color: #2c3e2f; margin: 0; font-weight: normal;">{talk.title}</h1>
+                    
+                    <!-- 管理員按鈕 (保留不變) -->
+                    <div id="admin-action-btns" style="display: none; gap: 10px;">
+                        <button class="btn-edit" onclick={`window.openEditModal(${talk.id})`}>修改</button>
+                    </div>
+                </div>
+
+                <!-- 快速切換其他標題導覽 -->
+                {allTalks.length > 1 && (
+                    <div class="talk-switcher-bar">
+                        <span style="font-size: 13px; color: #666; white-space: nowrap;">切換其他談話：</span>
+                        <select onchange="if(this.value) window.location.href='/talking/' + encodeURIComponent(this.value);" class="talk-select-dropdown">
+                            <option value="" disabled selected>— 請選擇其他談話 —</option>
+                            {allTalks.map((t: { title: string }) => (
+                                <option value={t.title} selected={t.title === talk.title}>{t.title}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+            </div>
+
+            <!-- 💻 電腦版「左相右字」兩欄式排版區塊 -->
+            <div class="talk-detail-grid">
+                <!-- 左側：相片 -->
+                <div class="talk-detail-img">
+                    <img src={talk.image_url} alt={talk.title} oncontextmenu="return false;" ondragstart="return false;" />
+                </div>
+
+                <!-- 右側：文字內容 -->
+                <div class="talk-detail-text">
+                    <Fragment set:html={formattedContent} />
                 </div>
             </div>
 
-            <div style="margin-bottom: 30px;">
-                <img src={talk.image_url} alt={talk.title} style="width: 100%; max-height: 500px; object-fit: contain; border-radius: 8px; " oncontextmenu="return false;" ondragstart="return false;" />
-            </div>
-
-            <div style="font-size: 16px; line-height: 2; color: #333; text-align: justify; white-space: pre-wrap;">
-                <Fragment set:html={formattedContent} />
-            </div>
         </div>
     </main>
 
@@ -71,8 +103,61 @@ const formattedContent = talk.description ? talk.description.replace(/\n/g, '<br
         checkAdmin();
 
         window.openEditModal = function(id) {
-            // 這裡可以串接你的編輯 Modal 邏輯
             alert("準備編輯談話 ID: " + id);
         }
     </script>
+
+    <style>
+        /* 預設電腦版：左相右字 2 欄格線排版 */
+        .talk-detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .talk-detail-img img {
+            width: 100%;
+            height: auto;
+            max-height: 550px;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        .talk-detail-text {
+            font-size: 16px;
+            line-height: 2;
+            color: #333;
+            text-align: justify;
+            white-space: pre-wrap;
+        }
+
+        /* 標題切換下拉選單樣式 */
+        .talk-switcher-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .talk-select-dropdown {
+            padding: 6px 12px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fafafa;
+            color: #333;
+            max-width: 350px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* 手機 RWD 響應式：螢幕小於 768px 時改回上下單欄排列 */
+        @media (max-width: 768px) {
+            .talk-detail-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+    </style>
 </BaseLayout>
