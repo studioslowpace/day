@@ -289,6 +289,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       .topic-card:after {
         top: 50%; /* 改為垂直中央 */
         right: 100%; /* 改為黏在最右邊 */
+        left: 100%;
         transform: translateY(-50%); /* 修正 Y 軸確保垂直完美置中 */
         margin-top: 0; /* 清除手機模式的 margin */
         
@@ -297,6 +298,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         border-bottom: 10px solid transparent;
         border-right: 12px solid #b0b8ae; /* 顏色改到右邊框 */
         border-left: none;
+        z-index: 3;
       }
     }
 @media (max-width: 768px) {
