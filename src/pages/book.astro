@@ -407,6 +407,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             .container { grid-template-columns: 1fr; }
         }
 
+/* 確保右側面板能正確容納並顯示檢索結果 */
         .panel {
             background: var(--card-bg);
             border-radius: 12px;
@@ -416,6 +417,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             min-height: 82vh;
             display: flex;
             flex-direction: column;
+            overflow: visible; /* 確保內容不會被隱藏 */
         }
 
         h2 {
@@ -474,14 +476,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             min-height: 18px;
         }
 
-        /* 🌐 右側檢索結果清單 */
+/* 🌐 右側檢索結果清單修正 */
         .book-list {
             display: flex;
             flex-direction: column;
             gap: 12px;
-            overflow-y: auto;
-            max-height: 65vh;
-            padding-right: 4px;
+            width: 100%;
+            margin-top: 10px;
         }
 
         .book-card {
@@ -492,6 +493,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             border-radius: 8px;
             background: #faf9f6;
             align-items: center;
+            width: 100%;
         }
 
         .book-cover {
