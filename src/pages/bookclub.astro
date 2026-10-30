@@ -12,14 +12,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </Fragment>
     
 <style is:global>
-        /* ==========================================
-           1. 全域與基礎排版樣式 (Global & Base)
-           ========================================== */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
             background-color: #fdfbf7;
@@ -29,535 +22,113 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             flex-direction: column;
             padding-bottom: 3rem;
         }
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* ==========================================
-           2. 提示彈窗樣式 (Toast)
-           ========================================== */
         .toast-notification {
-            position: fixed;
-            bottom: 2.5rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(28, 25, 23, 0.9);
-            color: #ffffff;
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 0.75rem 1.25rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            z-index: 50;
-            text-align: center;
-            border: 1px solid rgba(68, 64, 60, 0.5);
+            position: fixed; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+            background-color: rgba(28, 25, 23, 0.9); color: #ffffff;
+            font-size: 0.75rem; font-weight: 700; padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 50; text-align: center; border: 1px solid rgba(68, 64, 60, 0.5);
         }
 
-        /* ==========================================
-           3. 最高權限管理端樣式 (Admin Navbar)
-           ========================================== */
         .admin-nav {
-            background-color: #ffffff;
-            border-bottom: 1px solid #fef3c7;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            z-index: 50;
+            background-color: #ffffff; border-bottom: 1px solid #fef3c7;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); width: 100%; z-index: 50;
         }
-        .admin-nav-container {
-            max-width: 56rem;
-            margin: 0 auto;
-            padding: 1rem;
-        }
-        @media (min-width: 768px) {
-            .admin-nav-container { padding: 1.5rem; }
-        }
-        .admin-title-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #f3f4f6;
-            margin-bottom: 1rem;
-        }
-        .admin-title-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .admin-title-icon {
-            color: #d97706;
-            width: 1.25rem;
-            height: 1.25rem;
-        }
-        .admin-main-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #1f2937;
-        }
-        .btn-admin-close-nav {
-            color: #9ca3af;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-admin-close-nav:hover { color: #4b5563; }
-        .admin-close-icon { width: 1.25rem; height: 1.25rem; }
+        .admin-nav-container { max-width: 56rem; margin: 0 auto; padding: 1rem; }
+        @media (min-width: 768px) { .admin-nav-container { padding: 1.5rem; } }
+        .admin-title-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #f3f4f6; margin-bottom: 1rem; }
+        .admin-title-group { display: flex; align-items: center; gap: 0.5rem; }
+        .admin-title-icon { color: #d97706; width: 1.25rem; height: 1.25rem; }
+        .admin-main-title { font-size: 1rem; font-weight: 700; color: #1f2937; }
+        .btn-admin-close-nav { color: #9ca3af; background: transparent; border: none; cursor: pointer; }
         
-        .admin-logout-row {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        @media (min-width: 768px) {
-            .admin-logout-row { flex-direction: row; align-items: center; }
-        }
-        .admin-hint-text {
-            font-size: 0.75rem;
-            color: #9ca3af;
-        }
-        .admin-password-code {
-            background-color: #f3f4f6;
-            padding: 0.125rem 0.25rem;
-            border-radius: 0.25rem;
-            color: #b45309;
-        }
-        .admin-input-group-wrapper {
-            display: flex;
-            gap: 0.5rem;
-            flex: 1 1 0%;
-            width: 100%;
-            max-width: 24rem;
-        }
-        .admin-password-input {
-            width: 100%;
-            padding: 0.5rem 0.75rem;
-            background-color: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            font-size: 0.75rem;
-            letter-spacing: 0.1em;
-        }
-        .admin-password-input:focus { outline: none; border-color: #f59e0b; }
+        .admin-logout-row { display: flex; flex-direction: column; gap: 0.75rem; }
+        @media (min-width: 768px) { .admin-logout-row { flex-direction: row; align-items: center; } }
+        .admin-hint-text { font-size: 0.75rem; color: #9ca3af; }
+        .admin-password-code { background-color: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; color: #b45309; }
+        .admin-input-group-wrapper { display: flex; gap: 0.5rem; flex: 1 1 0%; width: 100%; max-width: 24rem; }
+        .admin-password-input { width: 100%; padding: 0.5rem 0.75rem; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.75rem; font-size: 0.75rem; letter-spacing: 0.1em; }
+        .btn-admin-login { padding: 0.5rem 1rem; background-color: #d97706; color: #ffffff; font-weight: 700; font-size: 0.75rem; border-radius: 0.75rem; border: none; cursor: pointer; white-space: nowrap; }
         
-        .btn-admin-login {
-            padding: 0.5rem 1rem;
-            background-color: #d97706;
-            color: #ffffff;
-            font-weight: 700;
-            font-size: 0.75rem;
-            border-radius: 0.75rem;
-            white-space: nowrap;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-admin-login:hover { background-color: #b45309; }
-        
-        .admin-login-row {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        @media (min-width: 768px) {
-            .admin-login-row { flex-direction: row; align-items: flex-start; justify-content: space-between; }
-        }
-        .admin-success-badge {
-            background-color: #ecfdf5;
-            color: #065f46;
-            font-size: 0.75rem;
-            padding: 0.75rem;
-            border-radius: 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .admin-success-text { font-weight: 700; }
-        .admin-success-icon { width: 1rem; height: 1rem; flex-shrink: 0; }
-        
-        .admin-logout-wrapper {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.5rem;
-            background-color: #f9fafb;
-            padding: 0.75rem;
-            border-radius: 1rem;
-            border: 1px solid #f3f4f6;
-            width: 100%;
-        }
+        .admin-login-row { display: flex; flex-direction: column; gap: 1rem; }
+        @media (min-width: 768px) { .admin-login-row { flex-direction: row; align-items: flex-start; justify-content: space-between; } }
+        .admin-success-badge { background-color: #ecfdf5; color: #065f46; font-size: 0.75rem; padding: 0.75rem; border-radius: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .admin-logout-wrapper { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; background-color: #f9fafb; padding: 0.75rem; border-radius: 1rem; border: 1px solid #f3f4f6; width: 100%; }
         @media (min-width: 768px) { .admin-logout-wrapper { width: auto; } }
-        
-        .btn-admin-logout {
-            padding: 0.5rem 0.75rem;
-            background-color: #fef2f2;
-            color: #dc2626;
-            font-size: 0.75rem;
-            font-weight: 700;
-            border-radius: 0.75rem;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-admin-logout:hover { background-color: #dc2626; color: #ffffff; }
+        .btn-admin-logout { padding: 0.5rem 0.75rem; background-color: #fef2f2; color: #dc2626; font-size: 0.75rem; font-weight: 700; border-radius: 0.75rem; border: none; cursor: pointer; }
 
-        /* ==========================================
-           4. 頁首與導覽區塊 (Header)
-           ========================================== */
-        .header-bar {
-            width: 100%;
-            background-color: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid #fef3c7;
-            padding: 0.75rem 1rem;
-            position: sticky;
-            top: 0;
-            z-index: 40;
-        }
-        .banner-logo-group {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            cursor: pointer;
-            user-select: none;
-        }
-        .banner-logo-img {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            transition: opacity 0.2s;
-        }
-        @media (max-width: 768px) {
-            .banner-logo-img { width: 40px; height: 40px; }
-        }
-        .banner-logo-group:hover .banner-logo-img { opacity: 0.8; }
+        .banner-logo-group { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; user-select: none; }
+        .banner-logo-img { width: 50px; height: 50px; object-fit: cover; transition: opacity 0.2s; }
+        @media (max-width: 768px) { .banner-logo-img { width: 40px; height: 40px; } }
 
         .hero-banner {
-            text-align: center;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            border-radius: 1.5rem;
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start;
+            gap: 1.5rem; padding: 1.5rem; border-radius: 1.5rem;
             background: linear-gradient(to bottom right, #fde68a, #ffedd5);
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            position: relative; overflow: hidden; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
         @media (min-width: 768px) { .hero-banner { padding: 1rem; } }
+        .hero-title { font-size: 34px; color: #4d361d; display: block; font-weight: bold; letter-spacing: 10px; }
+        .hero-title-sub { font-size: 20px; color: #4d361d; display: block; font-weight: bold; margin-top: -1.1rem; }
+        .hero-desc-wrapper { font-size: 1rem; color: #78350f; line-height: 1.625; letter-spacing: 0.12em; max-width: 48rem; width: 100%; text-align: left; }
 
-        .hero-banner h1 {
-            font-size: 34px;
-            color: #4d361d;
-            display: block;
-            font-weight: bold;
-            letter-spacing: 10px;
-        }
-        .hero-title-sub {
-            font-size: 20px;
-            color: #4d361d;
-            display: block;
-            font-weight: bold;
-            margin-top: -1.1rem;
-        }
-        .hero-desc-wrapper {
-            font-size: 1rem;
-            color: #78350f;
-            line-height: 1.625;
-            letter-spacing: 0.12em;
-            max-width: 48rem;
-            width: 100%;
-            text-align: left;
-        }
-        .hero-desc-wrapper p2 {
-            font-size: 0.75rem;
-            letter-spacing: 0.1em;
-        }
-
-        .layout-action-row {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: flex-end;
-        }
-
-        /* ==========================================
-           5. 按鈕基本樣式 (Buttons)
-           ========================================== */
-        .btn-base {
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 0.5rem 1rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+        .btn-base { font-size: 0.75rem; font-weight: 700; padding: 0.5rem 1rem; border-radius: 0.75rem; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
         .btn-orange { background-color: #ea580c; color: #ffffff; }
         .btn-orange:hover { background-color: #c2410c; }
-        .btn-back {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #ea580c;
-            background-color: #ffffff;
-            padding: 0.5rem 1rem;
-            border-radius: 0.75rem;
-            border: 1px solid #fef3c7;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-back:hover { color: #c2410c; }
-        .btn-back-icon { width: 1rem; height: 1rem; }
+        .btn-back { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #ea580c; background-color: #ffffff; padding: 0.5rem 1rem; border-radius: 0.75rem; border: 1px solid #fef3c7; cursor: pointer; }
 
-        /* ==========================================
-           6. 主要版面結構 (Layout)
-           ========================================== */
-        .main-layout {
-            width: 100%;
-            max-width: 56rem;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-            flex: 1 1 0%;
-        }
-        .layout-spacing {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-        .admin-status-badge {
-            text-align: center;
-            background-color: #fef3c7;
-            border: 1px solid #fde68a;
-            color: #92400e;
-            font-size: 0.75rem;
-            padding: 0.5rem;
-            border-radius: 0.75rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-        }
+        .main-layout { width: 100%; max-width: 56rem; margin: 0 auto; padding: 2rem 1rem; flex: 1 1 0%; }
+        .single-layout { width: 100%; max-width: 42rem; margin: 0 auto; padding: 1.5rem 1rem 0 1rem; flex: 1 1 0%; }
+        .layout-spacing { display: flex; flex-direction: column; gap: 1.5rem; }
+        .admin-status-badge { text-align: center; background-color: #fef3c7; border: 1px solid #fde68a; color: #92400e; font-size: 0.75rem; padding: 0.5rem; border-radius: 0.75rem; font-weight: 700; margin-bottom: 1.5rem; }
+        .layout-action-row { display: flex; justify-content: flex-end; }
 
-        /* ==========================================
-           7. 標籤分頁 (Tabs)
-           ========================================== */
-        .tabs-row {
-            display: flex;
-            border-bottom: 1px solid #fde68a;
-            font-size: 0.75rem;
-            font-weight: 700;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-        .tab-btn {
-            padding: 0.625rem 1rem;
-            color: #9ca3af;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-weight: 700;
-            transition: all 0.2s;
-        }
-        .tab-btn:hover { color: #4b5563; }
-        .tab-active-orange {
-            color: #ea580c;
-            border-bottom: 2px solid #f97316;
-        }
+        .tabs-row { display: flex; border-bottom: 1px solid #fde68a; font-size: 0.75rem; font-weight: 700; overflow-x: auto; white-space: nowrap; }
+        .tab-btn { padding: 0.625rem 1rem; color: #9ca3af; border: none; background: transparent; cursor: pointer; font-weight: 700; transition: all 0.2s; }
+        .tab-active-orange { color: #ea580c; border-bottom: 2px solid #f97316; }
 
-        /* ==========================================
-           8. 卡片網格與樣式 (Cards Grid)
-           ========================================== */
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(1, minmax(0, 1fr));
-            gap: 1rem;
-        }
+        .card-grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 1rem; }
         @media (min-width: 768px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (min-width: 1024px) { .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
         .task-card {
-            background-color: #ffffff;
-            border: 1.5px solid #fffbeb;
-            border-radius: 1.5rem;
-            padding: 1.75rem;
-            box-shadow: 0 10px 25px -5px rgba(251, 191, 36, 0.05);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: 1.25rem;
-            position: relative;
+            background-color: #ffffff; border: 1.5px solid #fffbeb; border-radius: 1.5rem; padding: 1.75rem;
+            box-shadow: 0 10px 25px -5px rgba(251, 191, 36, 0.05); display: flex; flex-direction: column; justify-content: space-between; gap: 1.25rem; position: relative; cursor: pointer;
         }
-        .task-card-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            width: 100%;
-        }
-        .avatar-circle-orange {
-            width: 3.25rem;
-            height: 3.25rem;
-            border-radius: 50%;
-            background-color: #fffbeb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            flex-shrink: 0;
-        }
-        .task-card-title {
-            font-size: 1rem;
-            font-weight: 800;
-            color: #1e293b;
-            margin: 0;
-            line-height: 1.3;
-        }
-        .task-card-subtitle {
-            font-size: 0.6rem;
-            color: #94a3b8;
-            margin-top: 0.25rem;
-        }
-        .tag-orange {
-            display: inline-block;
-            font-size: 0.6rem;
-            font-weight: 700;
-            color: #c2410c;
-            background-color: #fff7ed;
-            padding: 0.375rem 0.875rem;
-            border-radius: 9999px;
-            margin-top: 0.25rem;
-        }
-        .task-card-description {
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: #334155;
-            line-height: 1.6;
-            margin: 0.5rem 0 0.25rem 0;
-            white-space: pre-line;
-        }
-        .task-card-footer {
-            font-size: 0.7rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 0.7rem;
-            border-top: 1px dashed #f1f5f9;
-        }
-        .reward-info-text {
-            font-size: 0.7rem;
-            color: #94a3b8;
-            font-weight: 500;
-            flex: 1;
-        }
-        .reward-highlight {
-            color: #c2410c;
-            font-weight: 700;
-        }
-        .card-admin-tools {
-            position: absolute;
-            top: 1.25rem;
-            right: 1.25rem;
-            z-index: 10;
-        }
+        .task-card-header { display: flex; align-items: center; gap: 1rem; width: 100%; }
+        .avatar-circle-orange { width: 3.25rem; height: 3.25rem; border-radius: 50%; background-color: #fffbeb; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+        .task-card-title { font-size: 1rem; font-weight: 800; color: #1e293b; margin: 0; line-height: 1.3; }
+        .task-card-subtitle { font-size: 0.6rem; color: #94a3b8; margin-top: 0.25rem; }
+        .tag-orange { display: inline-block; font-size: 0.6rem; font-weight: 700; color: #c2410c; background-color: #fff7ed; padding: 0.375rem 0.875rem; border-radius: 9999px; margin-top: 0.25rem; }
+        .task-card-description { font-size: 0.8rem; font-weight: 500; color: #334155; line-height: 1.6; margin: 0.5rem 0 0.25rem 0; white-space: pre-line; }
+        .task-card-footer { font-size: 0.7rem; display: flex; justify-content: space-between; align-items: center; padding-top: 0.7rem; border-top: 1px dashed #f1f5f9; }
+        .reward-info-text { font-size: 0.7rem; color: #94a3b8; font-weight: 500; flex: 1; }
+        .reward-highlight { color: #c2410c; font-weight: 700; }
+        .badge-status-success { font-size: 0.875rem; font-weight: 700; color: #047857; background-color: #ecfdf5; padding: 0.5rem 0.875rem; border-radius: 0.875rem; display: flex; flex-direction: column; align-items: flex-end; }
+        .status-success-subtitle { font-size: 0.75rem; color: #059669; font-weight: 500; }
+        .card-admin-tools { position: absolute; top: 1.25rem; right: 1.25rem; z-index: 10; }
 
-        /* ==========================================
-           9. 彈窗模組通用樣式 (Modals)
-           ========================================== */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(4px);
-            z-index: 50;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem;
-        }
-        .modal-content {
-            background-color: #ffffff;
-            width: 100%;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
+        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); z-index: 50; display: flex; justify-content: center; align-items: center; padding: 1rem; }
+        .modal-content { background-color: #ffffff; width: 100%; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; gap: 1rem; }
         .max-w-sm { max-width: 24rem; }
         .max-w-md { max-width: 28rem; }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #f3f4f6;
-        }
-        .modal-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #1f2937;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .btn-modal-close {
-            color: #9ca3af;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-        }
-        .form-spacing {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .form-row-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.75rem;
-        }
-        .input-label {
-            display: block;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #6b7280;
-            margin-bottom: 0.25rem;
-        }
-        .input-field {
-            width: 100%;
-            padding: 0.625rem;
-            background-color: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            font-size: 0.875rem;
-        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid #f3f4f6; }
+        .modal-title { font-size: 1rem; font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 0.5rem; }
+        .btn-modal-close { color: #9ca3af; background: transparent; border: none; cursor: pointer; }
+        .form-spacing { display: flex; flex-direction: column; gap: 0.75rem; }
+        .form-row-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+        .input-label { display: block; font-size: 0.75rem; font-weight: 700; color: #6b7280; margin-bottom: 0.25rem; }
+        .input-field { width: 100%; padding: 0.625rem; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.75rem; font-size: 0.875rem; }
         .input-field:focus { outline: none; border-color: #ea580c; }
-        .btn-form-submit-orange {
-            width: 100%;
-            padding: 0.625rem 0;
-            background-color: #ea580c;
-            color: #ffffff;
-            font-weight: 700;
-            border-radius: 0.75rem;
-            border: none;
-            cursor: pointer;
-        }
+        .btn-form-submit-orange { width: 100%; padding: 0.625rem 0; background-color: #ea580c; color: #ffffff; font-weight: 700; border-radius: 0.75rem; border: none; cursor: pointer; }
         .btn-form-submit-orange:hover { background-color: #c2410c; }
 
-        .text-ellipsis-2line {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .text-ellipsis-5line {
-            display: -webkit-box;
-            -webkit-line-clamp: 5;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
+        .text-ellipsis-2line { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .text-ellipsis-5line { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
 
     <div id="toast-message" class="hidden toast-notification">
@@ -572,9 +143,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                     <i data-lucide="shield" class="admin-title-icon"></i>
                     <h2 class="admin-main-title">書友會全域管理端 (最高權限)</h2>
                 </div>
-                <button id="btn-admin-close-nav" class="btn-admin-close-nav">
-                    <i data-lucide="x" class="admin-close-icon"></i>
-                </button>
+                <button id="btn-admin-close-nav" class="btn-admin-close-nav"><i data-lucide="x" style="width:1.25rem;height:1.25rem;"></i></button>
             </div>
             
             <div id="admin-logged-out" class="admin-logout-row">
@@ -587,8 +156,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             
             <div id="admin-logged-in" class="hidden admin-login-row">
                 <div class="admin-success-badge">
-                    <i data-lucide="check-circle" class="admin-success-icon"></i>
-                    <span class="admin-success-text">主理人模式已啟用：可任意刪除或管理共讀揪團。</span>
+                    <i data-lucide="check-circle" style="width:1rem;height:1rem;"></i>
+                    <span class="admin-success-text">主理人模式已啟用：可任意解鎖、刪除與圓滿結案。</span>
                 </div>
                 <div class="admin-logout-wrapper">
                     <button id="btn-admin-logout" class="btn-admin-logout">登出主理人</button>
@@ -597,7 +166,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </div>
     </div>
 
-    <main class="main-layout">
+    <!-- 首頁大廳 -->
+    <main id="main-content-layout" class="main-layout">
         <div id="global-admin-badge" class="hidden admin-status-badge">🔑 主理人權限運作中 — 全域管理功能已解鎖</div>
         
         <div class="layout-spacing">
@@ -611,12 +181,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 </div>
                 
                 <div class="hero-desc-wrapper">
-                    <p>一個人讀書或許走得快，但一群人讀書能走得更遠。我們希望透過這個平台尋找志同道合的書友，發起共讀計畫、定期交流心得，讓書本中的字句在鄰里間激發出更多共鳴與火花。</p>
+                    <p>一個人讀書或許走得快，但一群人讀書能走得更遠。透過共讀計畫發起與書友招募，讓每一本書在鄰里間激發出更多深刻的共鳴與討論。</p>
                 </div>
             </div>
 
             <div class="layout-action-row">
-                <button id="header-upload-btn" class="btn-base btn-orange">+ 發起新共讀</button>
+                <button id="header-upload-btn" class="btn-base btn-orange">+ 發起新共讀計畫</button>
             </div>
 
             <div class="tabs-row">
@@ -628,17 +198,23 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </div>
     </main>
 
+    <!-- 獨立詳細資料頁 -->
+    <main id="single-post-layout" class="hidden single-layout">
+        <div style="margin-bottom: 1rem;">
+            <button id="btn-back-home" class="btn-back">
+                <i data-lucide="arrow-left" style="width:1rem;height:1rem;"></i>
+                <span>返回書友會大廳</span>
+            </button>
+        </div>
+        <div id="single-post-render-target"></div>
+    </main>
+
     <!-- 加入共讀彈窗 -->
     <div id="join-modal" class="hidden modal-overlay">
         <div class="modal-content max-w-sm">
             <div class="modal-header">
-                <h3 class="modal-title">
-                    <i data-lucide="user-plus" class="modal-title-icon" style="width:1rem;height:1rem;color:#ea580c;"></i>
-                    <span>填寫您的書友資料</span>
-                </h3>
-                <button id="btn-close-join" class="btn-modal-close">
-                    <i data-lucide="x" style="width:1.25rem;height:1.25rem;"></i>
-                </button>
+                <h3 class="modal-title"><span>填寫您的書友資料</span></h3>
+                <button id="btn-close-join" class="btn-modal-close"><i data-lucide="x" style="width:1.25rem;height:1.25rem;"></i></button>
             </div>
             <form id="join-form" class="form-spacing">
                 <input type="hidden" id="join-post-id">
@@ -655,14 +231,31 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </div>
     </div>
 
+    <!-- 圓滿結案彈窗 -->
+    <div id="complete-modal" class="hidden modal-overlay">
+        <div class="modal-content max-w-sm">
+            <div class="modal-header">
+                <h3 class="modal-title" style="color:#059669;">✨ <span>圓滿完結共讀計畫</span></h3>
+                <button id="btn-close-complete" class="btn-modal-close"><i data-lucide="x" style="width:1.25rem;height:1.25rem;"></i></button>
+            </div>
+            <div class="form-spacing">
+                <p style="font-size:0.75rem; color:#6b7280;">請選出本次一同圓滿完成共讀的夥伴代表，或直接關閉計畫。</p>
+                <input type="hidden" id="complete-post-id">
+                <div id="heroes-select-container" style="display:flex; flex-direction:column; gap:0.5rem; max-height:12rem; overflow-y:auto;"></div>
+                <div style="display:flex; gap:0.5rem; padding-top:0.5rem; border-top:1px solid #f3f4f6;">
+                    <button id="btn-cancel-complete" style="flex:1; padding:0.5rem 0; background:#f3f4f6; border-radius:0.75rem; border:none; font-size:0.75rem; font-weight:700; cursor:pointer;">取消</button>
+                    <button id="btn-confirm-complete" style="flex:1; padding:0.5rem 0; background:#059669; color:#fff; border-radius:0.75rem; border:none; font-size:0.75rem; font-weight:700; cursor:pointer;">確認完結計畫</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 發起新共讀彈窗 -->
     <div id="upload-modal" class="hidden modal-overlay">
         <div class="modal-content max-w-md">
             <div class="modal-header">
                 <h3 class="modal-title">發起新共讀計畫</h3>
-                <button id="btn-close-upload" class="btn-modal-close">
-                    <i data-lucide="x" style="width:1.25rem;height:1.25rem;"></i>
-                </button>
+                <button id="btn-close-upload" class="btn-modal-close"><i data-lucide="x" style="width:1.25rem;height:1.25rem;"></i></button>
             </div>
             <form id="post-form" class="form-spacing">
                 <div>
@@ -671,15 +264,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 </div>
                 <div class="form-row-grid">
                     <div><label class="input-label">您的稱呼</label><input type="text" id="initiatorNameInput" required class="input-field" autocomplete="off"></div>
-                    <div><label class="input-label">聯絡方式 (IG / Line)</label><input type="text" id="initiatorContactInput" required class="input-field" placeholder="🔒 僅發起人可見" autocomplete="off"></div>
+                    <div><label class="input-label">聯絡方式 (IG / Line)</label><input type="text" id="initiatorContactInput" required class="input-field" placeholder="🔒 僅發起人與密碼解鎖可見" autocomplete="off"></div>
                 </div>
                 <div>
                     <label class="input-label">共讀形式標籤</label>
                     <input type="text" id="bookTagInput" required class="input-field" placeholder="例如：#每週一章 #線上討論" autocomplete="off">
                 </div>
                 <div>
-                    <label class="input-label">共讀詳細說明與期望</label>
-                    <textarea id="bookDetailsInput" required rows="3" class="input-field" placeholder="請簡單說明讀書進度規劃、聚會頻率或期望招募幾位書友..." autocomplete="off"></textarea>
+                    <label class="input-label">共讀詳細說明與進度規劃</label>
+                    <textarea id="bookDetailsInput" required rows="3" class="input-field" placeholder="請詳細說明讀書進度、聚會頻率或期望招募幾位書友..." autocomplete="off"></textarea>
+                </div>
+                <div style="background:#fff7ed; padding:0.75rem; border-radius:1rem; border:1px solid #ffedd5;">
+                    <label class="input-label" style="color:#9a3412;">設定管理密碼</label>
+                    <input type="password" id="postPasswordInput" required class="input-field" placeholder="此密碼用於解鎖查看報名書友及完結計畫" autocomplete="off">
                 </div>
                 <button type="submit" class="btn-form-submit-orange">發布共讀計畫</button>
             </form>
@@ -689,17 +286,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 <script>
     const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
     const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-    const TABLE_NAME = 'book_clubs'; // 專用資料表
+    const TABLE_NAME = 'book_clubs';
     
     const supabaseInstance = window.supabase || supabase;
     const client = supabaseInstance.createClient(supabaseUrl, supabaseKey);
     
     let bookClubs = [];
     let isAdmin = false;
+    let currentViewingPostId = null;
     let currentTab = 'active';
+    let unlockedPosts = {};
 
     window.onload = async function() {
-        fetchBookClubs();
+        await fetchBookClubs();
         initEventListeners();
 
         try {
@@ -708,21 +307,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                 const { data: profile } = await client.from('profiles').select('is_admin').eq('id', session.user.id).single();
                 isAdmin = profile?.is_admin === true;
             }
-        } catch (err) {
-            isAdmin = false;
-        }
+        } catch (err) { isAdmin = false; }
+        
         updateAdminUI();
-        renderBookClubs();
+        refreshView();
 
         client.auth.onAuthStateChange(async (event, session) => {
             if (session?.user) {
                 const { data: profile } = await client.from('profiles').select('is_admin').eq('id', session.user.id).single();
                 isAdmin = profile?.is_admin === true;
-            } else {
-                isAdmin = false;
-            }
+            } else { isAdmin = false; }
             updateAdminUI();
-            renderBookClubs();
+            refreshView();
         });
     };
 
@@ -735,11 +331,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         document.getElementById('header-upload-btn')?.addEventListener('click', () => document.getElementById('upload-modal').classList.remove('hidden'));
         document.getElementById('btn-close-upload')?.addEventListener('click', () => document.getElementById('upload-modal').classList.add('hidden'));
         document.getElementById('btn-close-join')?.addEventListener('click', () => document.getElementById('join-modal').classList.add('hidden'));
+        document.getElementById('btn-close-complete')?.addEventListener('click', closeCompleteModal);
+        document.getElementById('btn-cancel-complete')?.addEventListener('click', closeCompleteModal);
+        document.getElementById('btn-confirm-complete')?.addEventListener('click', submitCompleteTask);
+        document.getElementById('btn-back-home')?.addEventListener('click', backToHomeList);
 
         document.querySelectorAll('.tabs-row .tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const tabName = e.currentTarget.getAttribute('data-tab');
-                switchTab(tabName);
+                switchTab(e.currentTarget.getAttribute('data-tab'));
             });
         });
 
@@ -752,8 +351,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             const { data, error } = await client.from(TABLE_NAME).select('*').order('created_at', { ascending: false });
             if (error) throw error;
             bookClubs = (data || []).map(item => ({ ...item, timeAgo: calculateTimeAgo(item.created_at) }));
+            refreshView();
+        } catch (err) { console.error("讀取資料失敗:", err.message); }
+    }
+
+    function refreshView() {
+        if (currentViewingPostId) {
+            renderSinglePostView(currentViewingPostId);
+        } else {
             renderBookClubs();
-        } catch (err) { console.error("讀取共讀資料失敗:", err.message); }
+        }
     }
 
     function switchTab(tabName) {
@@ -778,9 +385,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
         filtered.forEach(item => {
             const card = document.createElement('div');
-            card.className = "task-card";
+            card.className = "task-card card-post-item";
+            card.setAttribute('data-id', item.id);
 
-            const participantsCount = (item.participants || []).length;
+            const count = (item.participants || []).length;
             const adminTools = isAdmin ? `<div class="card-admin-tools"><button class="btn-card-delete" data-delete-id="${item.id}" style="background:none;border:none;cursor:pointer;">🗑️</button></div>` : '';
 
             card.innerHTML = `
@@ -789,7 +397,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                         <div class="avatar-circle-orange">📖</div>
                         <div style="flex: 1; min-width: 0;">
                             <h3 class="task-card-title text-ellipsis-2line">${item.book_title}</h3>
-                            <p class="task-card-subtitle">發起人：${item.initiator_name} • ${participantsCount}人已加入</p>
+                            <p class="task-card-subtitle">發起人：${item.initiator_name} • ${count}人已報名</p>
                         </div>
                     </div>
                     ${adminTools}
@@ -797,10 +405,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                     <p class="task-card-description text-ellipsis-5line">${item.details}</p>
                 </div>
                 <div class="task-card-footer">
-                    <div class="reward-info-text">
-                        <span>發起時間：${item.timeAgo}</span>
-                    </div>
-                    ${!item.is_completed ? `<button class="btn-base btn-orange btn-join" data-id="${item.id}">加入共讀</button>` : `<span style="font-size:0.75rem;color:#059669;font-weight:700;">已圓滿完結 🏮</span>`}
+                    <div class="reward-info-text"><span>發起時間：${item.timeAgo}</span></div>
+                    ${item.is_completed 
+                        ? `<span class="badge-status-success"><span class="status-success-subtitle">圓滿完結 🏮</span></span>`
+                        : `<button class="btn-base btn-orange btn-join" data-id="${item.id}">加入共讀</button>`
+                    }
                 </div>
             `;
             container.appendChild(card);
@@ -812,6 +421,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     function bindCardEvents() {
         document.querySelectorAll('.btn-join').forEach(btn => {
             btn.onclick = (e) => {
+                e.stopPropagation();
                 document.getElementById('join-post-id').value = e.currentTarget.getAttribute('data-id');
                 document.getElementById('join-modal').classList.remove('hidden');
             };
@@ -819,13 +429,156 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
         document.querySelectorAll('[data-delete-id]').forEach(btn => {
             btn.onclick = async (e) => {
+                e.stopPropagation();
                 if (confirm("確定要刪除此共讀計畫嗎？")) {
                     const id = e.currentTarget.getAttribute('data-delete-id');
                     await client.from(TABLE_NAME).delete().eq('id', id);
-                    fetchBookClubs();
+                    if (currentViewingPostId === id) backToHomeList();
+                    await fetchBookClubs();
                 }
             };
         });
+
+        document.querySelectorAll('.card-post-item').forEach(card => {
+            card.onclick = (e) => {
+                if (e.target.closest('button')) return;
+                goToPostDetail(card.getAttribute('data-id'));
+            };
+        });
+    }
+
+    function goToPostDetail(id) {
+        currentViewingPostId = id;
+        document.getElementById('main-content-layout').classList.add('hidden');
+        document.getElementById('single-post-layout').classList.remove('hidden');
+        renderSinglePostView(id);
+        window.scrollTo(0, 0);
+    }
+
+    function backToHomeList() {
+        currentViewingPostId = null;
+        document.getElementById('single-post-layout').classList.add('hidden');
+        document.getElementById('main-content-layout').classList.remove('hidden');
+        renderBookClubs();
+        window.scrollTo(0, 0);
+    }
+
+    function renderSinglePostView(id) {
+        const target = bookClubs.find(i => String(i.id) === String(id));
+        const renderTarget = document.getElementById('single-post-render-target');
+        if (!target || !renderTarget) return;
+
+        const isUnlocked = unlockedPosts[id] || isAdmin;
+        const participants = target.participants || [];
+
+        let adminActionsHtml = '';
+        if (isAdmin) {
+            adminActionsHtml += `<button onclick="deletePost('${target.id}')" style="background:#ef4444; color:#fff; padding:6px 12px; border-radius:8px; border:none; font-size:0.75rem; cursor:pointer;">🗑️ 刪除計畫</button>`;
+        }
+
+        renderTarget.innerHTML = `
+            <div style="background:#fff; border:1.5px solid #fffbeb; border-radius:1.5rem; padding:2rem; box-shadow:0 10px 25px rgba(251,191,36,0.05); display:flex; flex-direction:column; gap:1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <span class="tag-orange">${target.book_tag || '#共讀'}</span>
+                        <h2 style="font-size:1.5rem; font-weight:800; color:#1e293b; margin-top:0.5rem;">${target.book_title}</h2>
+                        <p style="font-size:0.75rem; color:#94a3b8; margin-top:0.25rem;">發起人：${target.initiator_name} • ${target.timeAgo}</p>
+                    </div>
+                    <div style="display:flex; gap:8px;">${adminActionsHtml}</div>
+                </div>
+
+                <div style="background:#fdfbf7; padding:1.25rem; border-radius:1rem; border:1px solid #fde68a;">
+                    <h4 style="font-size:0.85rem; font-weight:700; color:#92400e; margin-bottom:0.5rem;">📖 共讀詳細說明</h4>
+                    <p style="font-size:0.85rem; color:#334155; line-height:1.7; white-space:pre-line;">${target.details}</p>
+                </div>
+
+                <div style="background:#f9fafb; padding:1.25rem; border-radius:1rem; border:1px solid #e5e7eb;">
+                    <h4 style="font-size:0.85rem; font-weight:700; color:#374151; margin-bottom:0.75rem;">🔒 發起人聯絡與報名書友管理</h4>
+                    ${isUnlocked ? `
+                        <div style="display:flex; flex-direction:column; gap:1rem;">
+                            <div style="background:#fff; padding:0.75rem; border-radius:8px; border:1px solid #ddd;">
+                                <p style="font-size:0.75rem; font-weight:700; color:#c2410c;">發起人聯絡方式：</p>
+                                <p style="font-size:0.85rem; cursor:pointer; color:#1d4ed8; text-decoration:underline;" onclick="copyContactInfo('${target.initiator_contact}')">${target.initiator_contact} (點擊複製)</p>
+                            </div>
+                            <div>
+                                <p style="font-size:0.75rem; font-weight:700; color:#374151; margin-bottom:0.5rem;">已報名書友名單 (${participants.length}人)：</p>
+                                ${participants.length === 0 ? '<p style="font-size:0.75rem; color:#9ca3af;">目前尚無書友報名。</p>' : 
+                                    participants.map(p => `
+                                        <div style="background:#fff; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
+                                            <span><strong>${p.name}</strong></span>
+                                            <span style="color:#2563eb; cursor:pointer;" onclick="copyContactInfo('${p.contact}')">${p.contact} 📋</span>
+                                        </div>
+                                    `).join('')
+                                }
+                            </div>
+                            ${!target.is_completed ? `<button onclick="openCompleteModal('${target.id}')" class="btn-base" style="background:#059669; color:#fff; width:100%; margin-top:0.5rem;">✨ 圓滿完結此共讀計畫</button>` : '<p style="color:#059669; font-weight:700; font-size:0.8rem; text-align:center;">此共讀計畫已圓滿完結</p>'}
+                        </div>
+                    ` : `
+                        <div style="display:flex; gap:8px;">
+                            <input type="password" id="inline-pwd-input" placeholder="輸入發起密碼解鎖管理" class="input-field" style="font-size:0.75rem;">
+                            <button onclick="verifyPasswordInline('${target.id}')" class="btn-base btn-orange" style="white-space:nowrap;">解鎖管理</button>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    window.verifyPasswordInline = function(id) {
+        const target = bookClubs.find(i => String(i.id) === String(id));
+        const val = document.getElementById('inline-pwd-input').value.trim();
+        if (target && val === target.password) {
+            unlockedPosts[id] = true;
+            renderSinglePostView(id);
+        } else {
+            alert("❌ 密碼錯誤！");
+        }
+    };
+
+    window.deletePost = async function(id) {
+        if (confirm("確定要永久刪除此計畫嗎？")) {
+            await client.from(TABLE_NAME).delete().eq('id', id);
+            backToHomeList();
+            await fetchBookClubs();
+        }
+    };
+
+    function openCompleteModal(id) {
+        document.getElementById('complete-post-id').value = id;
+        const target = bookClubs.find(i => String(i.id) === String(id));
+        const container = document.getElementById('heroes-select-container');
+        container.innerHTML = '';
+
+        const noOne = document.createElement('label');
+        noOne.style = "display:flex; align-items:center; gap:8px; background:#f9fafb; padding:8px; border-radius:8px; cursor:pointer; font-size:0.75rem;";
+        noOne.innerHTML = `<input type="radio" name="selected-complete" value="none" checked> <span>僅關閉計畫（不指定特別夥伴）</span>`;
+        container.appendChild(noOne);
+
+        (target.participants || []).forEach((p, idx) => {
+            const item = document.createElement('label');
+            item.style = "display:flex; align-items:center; gap:8px; background:#ecfdf5; padding:8px; border-radius:8px; cursor:pointer; font-size:0.75rem;";
+            item.innerHTML = `<input type="radio" name="selected-complete" value="${idx}"> <span>夥伴代表：<strong>${p.name}</strong> (${p.contact})</span>`;
+            container.appendChild(item);
+        });
+
+        document.getElementById('complete-modal').classList.remove('hidden');
+    }
+
+    function closeCompleteModal() { document.getElementById('complete-modal').classList.add('hidden'); }
+
+    async function submitCompleteTask() {
+        const id = document.getElementById('complete-post-id').value;
+        const target = bookClubs.find(i => String(i.id) === String(id));
+        if (!target) return;
+
+        try {
+            const { error } = await client.from(TABLE_NAME).update({ is_completed: true }).eq('id', id);
+            if (error) throw error;
+            closeCompleteModal();
+            backToHomeList();
+            await fetchBookClubs();
+            alert("✨ 共讀計畫已圓滿完結！");
+        } catch (err) { alert("結案失敗: " + err.message); }
     }
 
     async function handleFormSubmit(e) {
@@ -836,6 +589,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             initiator_contact: document.getElementById('initiatorContactInput').value.trim(),
             book_tag: document.getElementById('bookTagInput').value.trim(),
             details: document.getElementById('bookDetailsInput').value.trim(),
+            password: document.getElementById('postPasswordInput').value.trim(),
             is_completed: false,
             participants: []
         };
@@ -845,15 +599,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             if (error) throw error;
             document.getElementById('upload-modal').classList.add('hidden');
             document.getElementById('post-form').reset();
-            fetchBookClubs();
-            alert("✨ 成功發起新共讀計畫！");
+            await fetchBookClubs();
+            alert("✨ 成功發起新共讀計畫！請牢記您的管理密碼。");
         } catch (err) { alert("發起失敗: " + err.message); }
     }
 
     async function handleJoinSubmit(e) {
         e.preventDefault();
         const id = document.getElementById('join-post-id').value;
-        const newParticipant = {
+        const newPart = {
             name: document.getElementById('join-name').value.trim(),
             contact: document.getElementById('join-ig').value.trim()
         };
@@ -861,30 +615,45 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         const target = bookClubs.find(i => String(i.id) === String(id));
         if (!target) return;
 
-        const updatedParticipants = [...(target.participants || []), newParticipant];
+        const updated = [...(target.participants || []), newPart];
 
         try {
-            const { error } = await client.from(TABLE_NAME).update({ participants: updatedParticipants }).eq('id', id);
+            const { error } = await client.from(TABLE_NAME).update({ participants: updated }).eq('id', id);
             if (error) throw error;
             document.getElementById('join-modal').classList.add('hidden');
             document.getElementById('join-form').reset();
-            fetchBookClubs();
+            await fetchBookClubs();
             alert("🎉 成功加入共讀！發起人將會與您聯繫。");
         } catch (err) { alert("加入失敗: " + err.message); }
     }
+
+    window.copyContactInfo = function(text) {
+        if (!text) return;
+        const ta = document.createElement("textarea");
+        ta.value = text.trim();
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        const toast = document.getElementById('toast-message');
+        toast.innerText = `📋 已複製聯絡資訊：「${text.trim()}」`;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 2300);
+    };
 
     function toggleAdminNavbar() { document.getElementById('admin-navbar')?.classList.toggle('hidden'); }
     async function handleAdminLogin() {
         const pwd = document.getElementById('admin-password-input').value.trim();
         const { error } = await client.auth.signInWithPassword({ email: 'admin@studio.local', password: pwd });
         if (error) alert("❌ 登入失敗: " + error.message);
-        else { alert("🟢 登入成功！"); document.getElementById('admin-password-input').value = ''; }
+        else { alert("🟢 主理人認證成功！"); document.getElementById('admin-password-input').value = ''; }
     }
     async function handleAdminLogout() {
         await client.auth.signOut();
         isAdmin = false;
         updateAdminUI();
-        renderBookClubs();
+        refreshView();
+        alert("已成功登出主理人模式。");
     }
     function updateAdminUI() {
         const loggedOut = document.getElementById('admin-logged-out');
