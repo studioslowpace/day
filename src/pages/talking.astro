@@ -127,49 +127,49 @@ export const prerender = false;
         let selectedNewCompressedFile = null;
         let selectedCompressedFile = null;
 
-        async function fetchTalks() {
-            const container = document.getElementById('events-container');
-            if (!container) return;
+async function fetchTalks() {
+    const container = document.getElementById('events-container');
+    if (!container) return;
 
-            const { data: talks, error } = await client.from(window.TABLE_NAME).select('*').order('sort_order', { ascending: false });
-            if (error || !talks || talks.length === 0) {
-                container.innerHTML = "<p style='text-align:center;'>目前沒有談話資料</p>";
-                talksData = [];
-                return;
-            }
+    // 1. 先確認登入狀態（在渲染卡片之前就先查好）
+    const { data: { session } } = await client.auth.getSession();
+    const isAdmin = !!session; // 如果有 session 就是 true，否則為 false
 
-            talksData = talks; // 儲存全域資料供編輯與排序使用
-            let htmlString = "";
-            talks.forEach((talk) => {
-                const talkUrl = `/talking/${encodeURIComponent(talk.title)}`;
-                
-                // 檢查是否為登入狀態，如果是管理員就額外加上編輯按鈕
-                const isAdmin = document.getElementById('open-add-modal-btn').style.display !== 'none';
-                const adminEditBadge = isAdmin ? `<span class="edit-badge" onclick="event.preventDefault(); openEditModalFromServer(${talk.id})">✏️ 編輯</span>` : '';
-                const orderBadge = isAdmin ? `<span class="order-badge">排序: ${talk.sort_order ?? 0}</span>` : '';
+    // 如果是管理員，順便把「加入全新談話資料」的大按鈕顯示出來
+    if (isAdmin) {
+        const addBtn = document.getElementById('open-add-modal-btn');
+        if (addBtn) addBtn.style.display = "inline-block";
+    }
 
-                htmlString += `
-                    <a href="${talkUrl}" class="talk-card">
-                        <h2 class="talk-title">${talk.title} ${orderBadge} ${adminEditBadge}</h2>
-                        <div class="talk-line"></div>
-                        <div class="talk-img-wrap">
-                            <img src="${talk.image_url}" alt="${talk.title}" oncontextmenu="return false;" ondragstart="return false;">
-                        </div>
-                        <p class="talk-desc">${talk.description || ''}</p>
-                    </a>
-                `;
-            });
-            container.innerHTML = htmlString;
+    const { data: talks, error } = await client.from(window.TABLE_NAME).select('*').order('sort_order', { ascending: false });
+    if (error || !talks || talks.length === 0) {
+        container.innerHTML = "<p style='text-align:center;'>目前沒有談話資料</p>";
+        talksData = [];
+        return;
+    }
 
-            // 檢查管理員身分
-            const { data: { session } } = await client.auth.getSession();
-            if (session) {
-                const addBtn = document.getElementById('open-add-modal-btn');
-                if (addBtn) addBtn.style.display = "inline-block";
-                // 重新渲染以顯示編輯按鈕
-                // fetchTalks() 會再次呼叫，避免無限迴圈這裡就不重複呼叫
-            }
-        }
+    talksData = talks; // 儲存全域資料供編輯與排序使用
+    let htmlString = "";
+    talks.forEach((talk) => {
+        const talkUrl = `/talking/${encodeURIComponent(talk.title)}`;
+        
+        // 2. 這裡的 isAdmin 現在能正確判定了！
+        const adminEditBadge = isAdmin ? `<span class="edit-badge" onclick="event.preventDefault(); openEditModalFromServer(${talk.id})">✏️ 編輯</span>` : '';
+        const orderBadge = isAdmin ? `<span class="order-badge">排序: ${talk.sort_order ?? 0}</span>` : '';
+
+        htmlString += `
+            <a href="${talkUrl}" class="talk-card">
+                <h2 class="talk-title">${talk.title} ${orderBadge} ${adminEditBadge}</h2>
+                <div class="talk-line"></div>
+                <div class="talk-img-wrap">
+                    <img src="${talk.image_url}" alt="${talk.title}" oncontextmenu="return false;" ondragstart="return false;">
+                </div>
+                <p class="talk-desc">${talk.description || ''}</p>
+            </a>
+        `;
+    });
+    container.innerHTML = htmlString;
+}
 
 // 方式 A：在「新增」視窗選擇圖片時觸發
 function handleNewImageUpload(event) {
