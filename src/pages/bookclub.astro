@@ -1,0 +1,913 @@
+---
+// 匯入 Layout
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="客舍書友會 Slow Pace Book Club">
+    <Fragment slot="head">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    </Fragment>
+    
+<style is:global>
+        /* ==========================================
+           1. 全域與基礎排版樣式 (Global & Base)
+           ========================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+            background-color: #fdfbf7;
+            min-height: 100vh;
+            color: #3A2E2B;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 3rem;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ==========================================
+           2. 提示彈窗樣式 (Toast)
+           ========================================== */
+        .toast-notification {
+            position: fixed;
+            bottom: 2.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(28, 25, 23, 0.9);
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 50;
+            text-align: center;
+            border: 1px solid rgba(68, 64, 60, 0.5);
+        }
+
+        /* ==========================================
+           3. 最高權限管理端樣式 (Admin Navbar)
+           ========================================== */
+        .admin-nav {
+            background-color: #ffffff;
+            border-bottom: 1px solid #fef3c7;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            z-index: 50;
+        }
+        .admin-nav-container {
+            max-width: 56rem;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        @media (min-width: 768px) {
+            .admin-nav-container { padding: 1.5rem; }
+        }
+        .admin-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f3f4f6;
+            margin-bottom: 1rem;
+        }
+        .admin-title-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .admin-title-icon {
+            color: #d97706;
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+        .admin-main-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .btn-admin-close-nav {
+            color: #9ca3af;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-admin-close-nav:hover { color: #4b5563; }
+        .admin-close-icon { width: 1.25rem; height: 1.25rem; }
+        
+        .admin-logout-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        @media (min-width: 768px) {
+            .admin-logout-row { flex-direction: row; align-items: center; }
+        }
+        .admin-hint-text {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+        .admin-password-code {
+            background-color: #f3f4f6;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            color: #b45309;
+        }
+        .admin-input-group-wrapper {
+            display: flex;
+            gap: 0.5rem;
+            flex: 1 1 0%;
+            width: 100%;
+            max-width: 24rem;
+        }
+        .admin-password-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+        }
+        .admin-password-input:focus { outline: none; border-color: #f59e0b; }
+        
+        .btn-admin-login {
+            padding: 0.5rem 1rem;
+            background-color: #d97706;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.75rem;
+            border-radius: 0.75rem;
+            white-space: nowrap;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-admin-login:hover { background-color: #b45309; }
+        
+        .admin-login-row {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        @media (min-width: 768px) {
+            .admin-login-row { flex-direction: row; align-items: flex-start; justify-content: space-between; }
+        }
+        .admin-success-badge {
+            background-color: #ecfdf5;
+            color: #065f46;
+            font-size: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .admin-success-text { font-weight: 700; }
+        .admin-success-icon { width: 1rem; height: 1rem; flex-shrink: 0; }
+        
+        .admin-logout-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #f9fafb;
+            padding: 0.75rem;
+            border-radius: 1rem;
+            border: 1px solid #f3f4f6;
+            width: 100%;
+        }
+        @media (min-width: 768px) { .admin-logout-wrapper { width: auto; } }
+        
+        .btn-admin-logout {
+            padding: 0.5rem 0.75rem;
+            background-color: #fef2f2;
+            color: #dc2626;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 0.75rem;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-admin-logout:hover { background-color: #dc2626; color: #ffffff; }
+
+        /* ==========================================
+           4. 頁首與導覽區塊 (Header)
+           ========================================== */
+        .header-bar {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #fef3c7;
+            padding: 0.75rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+        .banner-logo-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .banner-logo-img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            transition: opacity 0.2s;
+        }
+        @media (max-width: 768px) {
+            .banner-logo-img { width: 40px; height: 40px; }
+        }
+        .banner-logo-group:hover .banner-logo-img { opacity: 0.8; }
+
+        .hero-banner {
+            text-align: center;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            background: linear-gradient(to bottom right, #fde68a, #ffedd5);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        @media (min-width: 768px) { .hero-banner { padding: 1rem; } }
+
+        .hero-banner h1 {
+            font-size: 34px;
+            color: #4d361d;
+            display: block;
+            font-weight: bold;
+            letter-spacing: 10px;
+        }
+        .hero-title-sub {
+            font-size: 20px;
+            color: #4d361d;
+            display: block;
+            font-weight: bold;
+            margin-top: -1.1rem;
+        }
+        .hero-desc-wrapper {
+            font-size: 1rem;
+            color: #78350f;
+            line-height: 1.625;
+            letter-spacing: 0.12em;
+            max-width: 48rem;
+            width: 100%;
+            text-align: left;
+        }
+        .hero-desc-wrapper p2 {
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+        }
+
+        .layout-action-row {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        /* ==========================================
+           5. 按鈕基本樣式 (Buttons)
+           ========================================== */
+        .btn-base {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-orange { background-color: #ea580c; color: #ffffff; }
+        .btn-orange:hover { background-color: #c2410c; }
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #ea580c;
+            background-color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #fef3c7;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-back:hover { color: #c2410c; }
+        .btn-back-icon { width: 1rem; height: 1rem; }
+
+        /* ==========================================
+           6. 主要版面結構 (Layout)
+           ========================================== */
+        .main-layout {
+            width: 100%;
+            max-width: 56rem;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            flex: 1 1 0%;
+        }
+        .layout-spacing {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .admin-status-badge {
+            text-align: center;
+            background-color: #fef3c7;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            font-size: 0.75rem;
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        /* ==========================================
+           7. 標籤分頁 (Tabs)
+           ========================================== */
+        .tabs-row {
+            display: flex;
+            border-bottom: 1px solid #fde68a;
+            font-size: 0.75rem;
+            font-weight: 700;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .tab-btn {
+            padding: 0.625rem 1rem;
+            color: #9ca3af;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: #4b5563; }
+        .tab-active-orange {
+            color: #ea580c;
+            border-bottom: 2px solid #f97316;
+        }
+
+        /* ==========================================
+           8. 卡片網格與樣式 (Cards Grid)
+           ========================================== */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        @media (min-width: 768px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (min-width: 1024px) { .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+        .task-card {
+            background-color: #ffffff;
+            border: 1.5px solid #fffbeb;
+            border-radius: 1.5rem;
+            padding: 1.75rem;
+            box-shadow: 0 10px 25px -5px rgba(251, 191, 36, 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 1.25rem;
+            position: relative;
+        }
+        .task-card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+        }
+        .avatar-circle-orange {
+            width: 3.25rem;
+            height: 3.25rem;
+            border-radius: 50%;
+            background-color: #fffbeb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        .task-card-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin: 0;
+            line-height: 1.3;
+        }
+        .task-card-subtitle {
+            font-size: 0.6rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
+        }
+        .tag-orange {
+            display: inline-block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: #c2410c;
+            background-color: #fff7ed;
+            padding: 0.375rem 0.875rem;
+            border-radius: 9999px;
+            margin-top: 0.25rem;
+        }
+        .task-card-description {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #334155;
+            line-height: 1.6;
+            margin: 0.5rem 0 0.25rem 0;
+            white-space: pre-line;
+        }
+        .task-card-footer {
+            font-size: 0.7rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 0.7rem;
+            border-top: 1px dashed #f1f5f9;
+        }
+        .reward-info-text {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 500;
+            flex: 1;
+        }
+        .reward-highlight {
+            color: #c2410c;
+            font-weight: 700;
+        }
+        .card-admin-tools {
+            position: absolute;
+            top: 1.25rem;
+            right: 1.25rem;
+            z-index: 10;
+        }
+
+        /* ==========================================
+           9. 彈窗模組通用樣式 (Modals)
+           ========================================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            width: 100%;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .max-w-sm { max-width: 24rem; }
+        .max-w-md { max-width: 28rem; }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .modal-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-modal-close {
+            color: #9ca3af;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .form-spacing {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .form-row-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .input-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.625rem;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+        }
+        .input-field:focus { outline: none; border-color: #ea580c; }
+        .btn-form-submit-orange {
+            width: 100%;
+            padding: 0.625rem 0;
+            background-color: #ea580c;
+            color: #ffffff;
+            font-weight: 700;
+            border-radius: 0.75rem;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-form-submit-orange:hover { background-color: #c2410c; }
+
+        .text-ellipsis-2line {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .text-ellipsis-5line {
+            display: -webkit-box;
+            -webkit-line-clamp: 5;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+
+    <div id="toast-message" class="hidden toast-notification">
+        📋 聯絡資訊已複製到您的剪貼簿！
+    </div>
+
+    <!-- 管理端導覽列 -->
+    <div id="admin-navbar" class="hidden admin-nav">
+        <div class="admin-nav-container">
+            <div class="admin-title-row">
+                <div class="admin-title-group">
+                    <i data-lucide="shield" class="admin-title-icon"></i>
+                    <h2 class="admin-main-title">書友會全域管理端 (最高權限)</h2>
+                </div>
+                <button id="btn-admin-close-nav" class="btn-admin-close-nav">
+                    <i data-lucide="x" class="admin-close-icon"></i>
+                </button>
+            </div>
+            
+            <div id="admin-logged-out" class="admin-logout-row">
+                <p class="admin-hint-text">主理人專用登入密碼：<code class="admin-password-code"></code></p>
+                <div class="admin-input-group-wrapper">
+                    <input type="password" id="admin-password-input" placeholder="輸入管理密碼" class="admin-password-input">
+                    <button id="btn-admin-login" class="btn-admin-login">認證登入</button>
+                </div>
+            </div>
+            
+            <div id="admin-logged-in" class="hidden admin-login-row">
+                <div class="admin-success-badge">
+                    <i data-lucide="check-circle" class="admin-success-icon"></i>
+                    <span class="admin-success-text">主理人模式已啟用：可任意刪除或管理共讀揪團。</span>
+                </div>
+                <div class="admin-logout-wrapper">
+                    <button id="btn-admin-logout" class="btn-admin-logout">登出主理人</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main-layout">
+        <div id="global-admin-badge" class="hidden admin-status-badge">🔑 主理人權限運作中 — 全域管理功能已解鎖</div>
+        
+        <div class="layout-spacing">
+            <div class="hero-banner">
+                <div id="banner-logo-trigger" class="banner-logo-group">
+                  <img src="/images/logo-small2.png" alt="Logo" class="banner-logo-img" oncontextmenu="return false;" ondragstart="return false;">
+                </div>
+                <div>
+                    <h1 class="hero-title">客舍書友會</h1>
+                    <span class="hero-title-sub">Slow Pace Book Club</span>
+                </div>
+                
+                <div class="hero-desc-wrapper">
+                    <p>一個人讀書或許走得快，但一群人讀書能走得更遠。我們希望透過這個平台尋找志同道合的書友，發起共讀計畫、定期交流心得，讓書本中的字句在鄰里間激發出更多共鳴與火花。</p>
+                </div>
+            </div>
+
+            <div class="layout-action-row">
+                <button id="header-upload-btn" class="btn-base btn-orange">+ 發起新共讀</button>
+            </div>
+
+            <div class="tabs-row">
+                <button id="tab-active" data-tab="active" class="tab-btn tab-active-orange">招募中的共讀</button>
+                <button id="tab-completed" data-tab="completed" class="tab-btn">已完結的共讀</button>
+            </div>
+
+            <div id="posts-container" class="card-grid"></div>
+        </div>
+    </main>
+
+    <!-- 加入共讀彈窗 -->
+    <div id="join-modal" class="hidden modal-overlay">
+        <div class="modal-content max-w-sm">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i data-lucide="user-plus" class="modal-title-icon" style="width:1rem;height:1rem;color:#ea580c;"></i>
+                    <span>填寫您的書友資料</span>
+                </h3>
+                <button id="btn-close-join" class="btn-modal-close">
+                    <i data-lucide="x" style="width:1.25rem;height:1.25rem;"></i>
+                </button>
+            </div>
+            <form id="join-form" class="form-spacing">
+                <input type="hidden" id="join-post-id">
+                <div>
+                    <label class="input-label">您的姓名 / 稱呼</label>
+                    <input type="text" id="join-name" required class="input-field" autocomplete="off">
+                </div>
+                <div>
+                    <label class="input-label">您的聯絡方式 (IG / Line / 電話)</label>
+                    <input type="text" id="join-ig" required class="input-field" autocomplete="off">
+                </div>
+                <button type="submit" class="btn-form-submit-orange">確認加入共讀</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 發起新共讀彈窗 -->
+    <div id="upload-modal" class="hidden modal-overlay">
+        <div class="modal-content max-w-md">
+            <div class="modal-header">
+                <h3 class="modal-title">發起新共讀計畫</h3>
+                <button id="btn-close-upload" class="btn-modal-close">
+                    <i data-lucide="x" style="width:1.25rem;height:1.25rem;"></i>
+                </button>
+            </div>
+            <form id="post-form" class="form-spacing">
+                <div>
+                    <label class="input-label">欲共讀的書名與作者</label>
+                    <input type="text" id="bookTitleInput" required class="input-field" placeholder="例如：《被討厭的勇氣》岸見一郎" autocomplete="off">
+                </div>
+                <div class="form-row-grid">
+                    <div><label class="input-label">您的稱呼</label><input type="text" id="initiatorNameInput" required class="input-field" autocomplete="off"></div>
+                    <div><label class="input-label">聯絡方式 (IG / Line)</label><input type="text" id="initiatorContactInput" required class="input-field" placeholder="🔒 僅發起人可見" autocomplete="off"></div>
+                </div>
+                <div>
+                    <label class="input-label">共讀形式標籤</label>
+                    <input type="text" id="bookTagInput" required class="input-field" placeholder="例如：#每週一章 #線上討論" autocomplete="off">
+                </div>
+                <div>
+                    <label class="input-label">共讀詳細說明與期望</label>
+                    <textarea id="bookDetailsInput" required rows="3" class="input-field" placeholder="請簡單說明讀書進度規劃、聚會頻率或期望招募幾位書友..." autocomplete="off"></textarea>
+                </div>
+                <button type="submit" class="btn-form-submit-orange">發布共讀計畫</button>
+            </form>
+        </div>
+    </div>
+
+<script>
+    const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+    const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+    const TABLE_NAME = 'book_clubs'; // 專用資料表
+    
+    const supabaseInstance = window.supabase || supabase;
+    const client = supabaseInstance.createClient(supabaseUrl, supabaseKey);
+    
+    let bookClubs = [];
+    let isAdmin = false;
+    let currentTab = 'active';
+
+    window.onload = async function() {
+        fetchBookClubs();
+        initEventListeners();
+
+        try {
+            const { data: { session } } = await client.auth.getSession();
+            if (session?.user) {
+                const { data: profile } = await client.from('profiles').select('is_admin').eq('id', session.user.id).single();
+                isAdmin = profile?.is_admin === true;
+            }
+        } catch (err) {
+            isAdmin = false;
+        }
+        updateAdminUI();
+        renderBookClubs();
+
+        client.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                const { data: profile } = await client.from('profiles').select('is_admin').eq('id', session.user.id).single();
+                isAdmin = profile?.is_admin === true;
+            } else {
+                isAdmin = false;
+            }
+            updateAdminUI();
+            renderBookClubs();
+        });
+    };
+
+    function initEventListeners() {
+        document.getElementById('banner-logo-trigger')?.addEventListener('click', toggleAdminNavbar);
+        document.getElementById('btn-admin-close-nav')?.addEventListener('click', toggleAdminNavbar);
+        document.getElementById('btn-admin-login')?.addEventListener('click', handleAdminLogin);
+        document.getElementById('btn-admin-logout')?.addEventListener('click', handleAdminLogout);
+
+        document.getElementById('header-upload-btn')?.addEventListener('click', () => document.getElementById('upload-modal').classList.remove('hidden'));
+        document.getElementById('btn-close-upload')?.addEventListener('click', () => document.getElementById('upload-modal').classList.add('hidden'));
+        document.getElementById('btn-close-join')?.addEventListener('click', () => document.getElementById('join-modal').classList.add('hidden'));
+
+        document.querySelectorAll('.tabs-row .tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabName = e.currentTarget.getAttribute('data-tab');
+                switchTab(tabName);
+            });
+        });
+
+        document.getElementById('post-form')?.addEventListener('submit', handleFormSubmit);
+        document.getElementById('join-form')?.addEventListener('submit', handleJoinSubmit);
+    }
+
+    async function fetchBookClubs() {
+        try {
+            const { data, error } = await client.from(TABLE_NAME).select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            bookClubs = (data || []).map(item => ({ ...item, timeAgo: calculateTimeAgo(item.created_at) }));
+            renderBookClubs();
+        } catch (err) { console.error("讀取共讀資料失敗:", err.message); }
+    }
+
+    function switchTab(tabName) {
+        currentTab = tabName;
+        document.querySelectorAll('.tabs-row .tab-btn').forEach(t => t.className = "tab-btn");
+        document.getElementById(`tab-${tabName}`).className = "tab-btn tab-active-orange";
+        renderBookClubs();
+    }
+
+    function renderBookClubs() {
+        const container = document.getElementById('posts-container');
+        if(!container) return;
+        container.innerHTML = '';
+
+        const isCompletedTarget = (currentTab === 'completed');
+        const filtered = bookClubs.filter(item => !!item.is_completed === isCompletedTarget);
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem;grid-column:1/-1;text-align:center;padding:2rem;">目前此分類尚無共讀計畫。</p>';
+            return;
+        }
+
+        filtered.forEach(item => {
+            const card = document.createElement('div');
+            card.className = "task-card";
+
+            const participantsCount = (item.participants || []).length;
+            const adminTools = isAdmin ? `<div class="card-admin-tools"><button class="btn-card-delete" data-delete-id="${item.id}" style="background:none;border:none;cursor:pointer;">🗑️</button></div>` : '';
+
+            card.innerHTML = `
+                <div>
+                    <div class="task-card-header">
+                        <div class="avatar-circle-orange">📖</div>
+                        <div style="flex: 1; min-width: 0;">
+                            <h3 class="task-card-title text-ellipsis-2line">${item.book_title}</h3>
+                            <p class="task-card-subtitle">發起人：${item.initiator_name} • ${participantsCount}人已加入</p>
+                        </div>
+                    </div>
+                    ${adminTools}
+                    <div style="margin-top:0.5rem;"><span class="tag-orange">${item.book_tag || '#共讀'}</span></div>
+                    <p class="task-card-description text-ellipsis-5line">${item.details}</p>
+                </div>
+                <div class="task-card-footer">
+                    <div class="reward-info-text">
+                        <span>發起時間：${item.timeAgo}</span>
+                    </div>
+                    ${!item.is_completed ? `<button class="btn-base btn-orange btn-join" data-id="${item.id}">加入共讀</button>` : `<span style="font-size:0.75rem;color:#059669;font-weight:700;">已圓滿完結 🏮</span>`}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        bindCardEvents();
+    }
+
+    function bindCardEvents() {
+        document.querySelectorAll('.btn-join').forEach(btn => {
+            btn.onclick = (e) => {
+                document.getElementById('join-post-id').value = e.currentTarget.getAttribute('data-id');
+                document.getElementById('join-modal').classList.remove('hidden');
+            };
+        });
+
+        document.querySelectorAll('[data-delete-id]').forEach(btn => {
+            btn.onclick = async (e) => {
+                if (confirm("確定要刪除此共讀計畫嗎？")) {
+                    const id = e.currentTarget.getAttribute('data-delete-id');
+                    await client.from(TABLE_NAME).delete().eq('id', id);
+                    fetchBookClubs();
+                }
+            };
+        });
+    }
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        const newItem = {
+            book_title: document.getElementById('bookTitleInput').value.trim(),
+            initiator_name: document.getElementById('initiatorNameInput').value.trim(),
+            initiator_contact: document.getElementById('initiatorContactInput').value.trim(),
+            book_tag: document.getElementById('bookTagInput').value.trim(),
+            details: document.getElementById('bookDetailsInput').value.trim(),
+            is_completed: false,
+            participants: []
+        };
+
+        try {
+            const { error } = await client.from(TABLE_NAME).insert([newItem]);
+            if (error) throw error;
+            document.getElementById('upload-modal').classList.add('hidden');
+            document.getElementById('post-form').reset();
+            fetchBookClubs();
+            alert("✨ 成功發起新共讀計畫！");
+        } catch (err) { alert("發起失敗: " + err.message); }
+    }
+
+    async function handleJoinSubmit(e) {
+        e.preventDefault();
+        const id = document.getElementById('join-post-id').value;
+        const newParticipant = {
+            name: document.getElementById('join-name').value.trim(),
+            contact: document.getElementById('join-ig').value.trim()
+        };
+
+        const target = bookClubs.find(i => String(i.id) === String(id));
+        if (!target) return;
+
+        const updatedParticipants = [...(target.participants || []), newParticipant];
+
+        try {
+            const { error } = await client.from(TABLE_NAME).update({ participants: updatedParticipants }).eq('id', id);
+            if (error) throw error;
+            document.getElementById('join-modal').classList.add('hidden');
+            document.getElementById('join-form').reset();
+            fetchBookClubs();
+            alert("🎉 成功加入共讀！發起人將會與您聯繫。");
+        } catch (err) { alert("加入失敗: " + err.message); }
+    }
+
+    function toggleAdminNavbar() { document.getElementById('admin-navbar')?.classList.toggle('hidden'); }
+    async function handleAdminLogin() {
+        const pwd = document.getElementById('admin-password-input').value.trim();
+        const { error } = await client.auth.signInWithPassword({ email: 'admin@studio.local', password: pwd });
+        if (error) alert("❌ 登入失敗: " + error.message);
+        else { alert("🟢 登入成功！"); document.getElementById('admin-password-input').value = ''; }
+    }
+    async function handleAdminLogout() {
+        await client.auth.signOut();
+        isAdmin = false;
+        updateAdminUI();
+        renderBookClubs();
+    }
+    function updateAdminUI() {
+        const loggedOut = document.getElementById('admin-logged-out');
+        const loggedIn = document.getElementById('admin-logged-in');
+        const globalBadge = document.getElementById('global-admin-badge');
+        if (isAdmin) {
+            loggedOut?.classList.add('hidden');
+            loggedIn?.classList.remove('hidden');
+            globalBadge?.classList.remove('hidden');
+        } else {
+            loggedOut?.classList.remove('hidden');
+            loggedIn?.classList.add('hidden');
+            globalBadge?.classList.add('hidden');
+        }
+    }
+    function calculateTimeAgo(timestamp) {
+        if (!timestamp) return "剛剛";
+        const diffMs = new Date() - new Date(timestamp);
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 60) return `${diffMins} 分鐘前`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours} 小時前`;
+        return `${Math.floor(diffHours / 24)} 天前`;
+    }
+</script>
+</BaseLayout>
