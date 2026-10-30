@@ -1,53 +1,5 @@
 ---
-
-import { createClient } from '@supabase/supabase-js';
-
-// 初始化 Supabase 伺服器端連線（建議改用環境變數存放 Supabase URL 與 Service Role / Anon Key）
-const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
-const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-let authenticated = false;
-let loginError = false;
-
-if (Astro.cookies.has("auth_token")) {
-  authenticated = true;
-}
-
-if (Astro.request.method === "POST") {
-  const formData = await Astro.request.formData();
-  const action = formData.get("action");
-
-  if (action === "login") {
-    const password = formData.get("password");
-
-    // 🚀 從 Supabase 的 site_settings 資料表撈取密碼
-    const { data: settingData, error } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', 'SITE_PASSWORD')
-      .single();
-
-    const CORRECT_PASSWORD = settingData ? settingData.value : null;
-
-    if (!CORRECT_PASSWORD) {
-      console.error("⚠️ 警告：Supabase 未偵測到 SITE_PASSWORD 設定！");
-    }
-
-    if (CORRECT_PASSWORD && password === CORRECT_PASSWORD) {
-      Astro.cookies.set("auth_token", "secure_logged_in_status", { path: "/", maxAge: 60 * 60 * 24 });
-      authenticated = true;
-      loginError = false;
-    } else {
-      Astro.cookies.delete("auth_token", { path: "/" });
-      authenticated = false;
-      loginError = true;
-    }
-  } else if (action === "logout") {
-    Astro.cookies.delete("auth_token", { path: "/" });
-    authenticated = false;
-  }
-}
+import { internData } from '../data/interns';
 ---
 
 <html lang="zh-Hant">
@@ -58,6 +10,7 @@ if (Astro.request.method === "POST") {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入 Supabase CDN -->
     <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
@@ -69,8 +22,8 @@ if (Astro.request.method === "POST") {
         --sage-light: #f3f5f0;    
         --clay-orange: #c88a75;   
         --border-color: #e6e3da;  
-        --grid-border: #dfdbd3;   /* 溫柔的暖灰線條 */
-        --holiday-red: #cc6666;   /* 低飽和度的文青紅 */
+        --grid-border: #dfdbd3;   
+        --holiday-red: #cc6666;   
         --font-serif: "Noto Serif TC", "Georgia", serif;
       }
 
@@ -130,12 +83,15 @@ if (Astro.request.method === "POST") {
         font-size: 1rem; 
         cursor: pointer; 
         letter-spacing: 4px; 
-        text-indent: 4px; /* 修正因字距產生的置中微調 */
+        text-indent: 4px;
         transition: opacity 0.2s;
       }
       .login-container button:hover { opacity: 0.9; }
+
+      /* 隱藏未登入或已登入的區塊 */
+      .auth-protected { display: none; }
+      .auth-login-box { display: block; }
       
-      /* 頁首標題 */
       header { text-align: center; margin-bottom: 50px; position: relative; }
       header h1 { font-family: var(--font-serif); font-size: 2.4rem; font-weight: 500; letter-spacing: 4px; margin-bottom: 12px; color: var(--text-main); }
       header p { color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; }
@@ -158,7 +114,6 @@ if (Astro.request.method === "POST") {
 
       .main-container { max-width: 1400px; margin: 0 auto; }
 
-      /* 月份切換 */
       .month-switcher-header {
         display: flex;
         align-items: center;
@@ -190,7 +145,6 @@ if (Astro.request.method === "POST") {
       }
       .switch-btn:hover { background: white; color: var(--sage-green); border-color: var(--sage-green); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
 
-      /* 月曆大外框 */
       .calendar-section { 
         background: white; 
         padding: 40px; 
@@ -199,14 +153,12 @@ if (Astro.request.method === "POST") {
         box-shadow: 0 10px 40px rgba(61,64,53,0.015); 
       }
 
-      /* 月曆 Grid 佈局 */
       .calendar-grid { 
         display: grid; 
         grid-template-columns: repeat(7, 1fr); 
         background-color: white; 
       }
       
-      /* 星期標頭 */
       .calendar-header { 
         font-size: 0.88rem; 
         color: var(--text-muted); 
@@ -217,14 +169,12 @@ if (Astro.request.method === "POST") {
         border-bottom: 2px solid var(--grid-border);
       }
       
-      /* 日期區域 */
       #calendar-days {
-        grid-auto-rows: minmax(160px, auto); /* 固定最小行高，活動多時自動撐高 */
+        grid-auto-rows: minmax(160px, auto);
         border-left: 1px solid var(--grid-border);
         border-bottom: 1px solid var(--grid-border);
       }
       
-      /* 每個日子的格子 */
       .calendar-day {
         background: white;
         padding: 14px;
@@ -238,14 +188,12 @@ if (Astro.request.method === "POST") {
       }
       .calendar-day:hover { background: #faf9f5; }
       
-      /* 空白留白感 */
       .calendar-day.empty { 
         background: #fdfcfe; 
         opacity: 0.4; 
         cursor: default;
       }
       
-      /* 日期數字 */
       .day-number { 
         font-family: var(--font-serif);
         font-size: 1.25rem; 
@@ -259,7 +207,6 @@ if (Astro.request.method === "POST") {
       .calendar-day.is-holiday { background-color: #fffbfb; }
       .calendar-day.is-holiday .day-number { color: var(--holiday-red); }
 
-      /* 活動項目精緻化 */
       .activity-item {
         padding: 8px 10px;
         border-radius: 6px;
@@ -269,11 +216,8 @@ if (Astro.request.method === "POST") {
         box-shadow: 0 1px 3px rgba(61,64,53,0.04);
         transition: transform 0.15s ease;
       }
-      .activity-item:hover {
-        transform: translateY(-1px);
-      }
+      .activity-item:hover { transform: translateY(-1px); }
       
-      /* 🎯 移除原本動態覆蓋的色彩，強制時間字變回手帳主體黑色 */
       .act-time { 
         font-size: 0.72rem; 
         font-weight: 600; 
@@ -288,29 +232,11 @@ if (Astro.request.method === "POST") {
         font-weight: 500; 
         word-break: break-all; 
         line-height: 1.35;
-        color: var(--text-main) !important; /* 🎯 確保活動名稱為黑色 */
+        color: var(--text-main) !important; 
       }
 
       .loading-status { text-align: center; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; font-style: italic; letter-spacing: 1px; }
 
-      /* 響應式微調 */
-      @media (max-width: 1024px) {
-        #calendar-days { grid-auto-rows: minmax(130px, auto); }
-      }
-
-      @media (max-width: 768px) {
-        body { padding: 30px 10px; }
-        header h1 { font-size: 1.8rem; }
-        .btn-logout { position: static; display: block; margin: 15px auto 0; }
-        .calendar-section { padding: 15px; border-radius: 12px; }
-        #calendar-days { grid-auto-rows: minmax(100px, auto); }
-        .calendar-day { padding: 8px; gap: 4px; }
-        .day-number { font-size: 1rem; }
-        .act-title { font-size: 0.75rem; }
-        .activity-item { padding: 4px 6px; border-radius: 4px; }
-      }
-
-      /* 🎯 新增：頁首功能導覽列 */
       .header-nav {
         display: flex;
         justify-content: center;
@@ -340,8 +266,16 @@ if (Astro.request.method === "POST") {
         box-shadow: 0 6px 15px rgba(107,122,103,0.08);
       }
 
-      /* 調整原本 RWD 響應式，讓手機版也好看 */
       @media (max-width: 768px) {
+        body { padding: 30px 10px; }
+        header h1 { font-size: 1.8rem; }
+        .btn-logout { position: static; display: block; margin: 15px auto 0; }
+        .calendar-section { padding: 15px; border-radius: 12px; }
+        #calendar-days { grid-auto-rows: minmax(100px, auto); }
+        .calendar-day { padding: 8px; gap: 4px; }
+        .day-number { font-size: 1rem; }
+        .act-title { font-size: 0.75rem; }
+        .activity-item { padding: 4px 6px; border-radius: 4px; }
         .header-nav { gap: 10px; margin-top: 20px; }
         .nav-link { padding: 8px 14px; font-size: 0.85rem; width: 100%; text-align: center; }
       }
@@ -349,64 +283,59 @@ if (Astro.request.method === "POST") {
   </head>
   
   <body>
-    { !authenticated ? (
-      <div class="login-container">
-        <h2>登入實習生活動時間表</h2>
-        <form method="POST">
-          <input type="hidden" name="action" value="login" />
-          <input type="password" name="password" placeholder="請輸入密碼" required />
-          <button type="submit">確認進入</button>
-        </form>
-        {loginError && <p style="color: var(--holiday-red); margin-top: 15px; font-size: 0.9rem;">❌ 密碼錯誤，請再試一次。</p>}
-      </div>
-    ) : (
-      <div>
-        <header>
-        <!-- 🎯 新增：功能連結區域 -->
-          <nav class="header-nav">
-            <a href="https://studioslowpace.com/dutyschedule/" target="_blank" rel="noopener noreferrer" class="nav-link">
-              📅 客舍/客棧的時間編排
-            </a>
-            <a href="/internpost" target="_blank" rel="noopener noreferrer" class="nav-link">
-              ✍️ 上載實習生的觀察 Post
-            </a>
-            <a href="/hostelactivity" target="_blank" rel="noopener noreferrer" class="nav-link">
-              🏠 共享客廳每週當值與小活動
-            </a>
-          </nav>
-          <h1>客舍實習生 - 活動時間表</h1>
-          <p>☁️ 點擊日子可查看當日活動詳情</p>
-          <form method="POST">
-            <input type="hidden" name="action" value="logout" />
-            <button type="submit" class="btn-logout">登出系統</button>
-          </form>
-        </header>
+    <!-- 登入表單容器 -->
+    <div id="login-container" class="login-container auth-login-box">
+      <h2>登入實習生活動時間表</h2>
+      <form id="login-form">
+        <input type="password" id="password-input" placeholder="請輸入密碼" required />
+        <button type="submit">確認進入</button>
+      </form>
+      <p id="login-error" style="color: var(--holiday-red); margin-top: 15px; font-size: 0.9rem; display: none;">❌ 密碼錯誤，請再試一次。</p>
+    </div>
 
-        <div class="main-container">
-          <div class="month-switcher-header">
-            <button id="btn-prev-month" class="switch-btn">‹</button>
-            <h2 id="calendar-title" class="current-month-display">載入中...</h2>
-            <button id="btn-next-month" class="switch-btn">›</button>
+    <!-- 登入後顯示的主內容容器 -->
+    <div id="main-content" class="auth-protected">
+      <header>
+        <nav class="header-nav">
+          <a href="https://studioslowpace.com/dutyschedule/" target="_blank" rel="noopener noreferrer" class="nav-link">
+            📅 客舍/客棧的時間編排
+          </a>
+          <a href="/internpost" target="_blank" rel="noopener noreferrer" class="nav-link">
+            ✍️ 上載實習生的觀察 Post
+          </a>
+          <a href="/hostelactivity" target="_blank" rel="noopener noreferrer" class="nav-link">
+            🏠 共享客廳每週當值與小活動
+          </a>
+        </nav>
+        <h1>客舍實習生 - 活動時間表</h1>
+        <p>☁️ 點擊日子可查看當日活動詳情</p>
+        <button id="btn-logout" class="btn-logout">登出系統</button>
+      </header>
+
+      <div class="main-container">
+        <div class="month-switcher-header">
+          <button id="btn-prev-month" class="switch-btn">‹</button>
+          <h2 id="calendar-title" class="current-month-display">載入中...</h2>
+          <button id="btn-next-month" class="switch-btn">›</button>
+        </div>
+
+        <section class="calendar-section">
+          <div id="loading-text" class="loading-status">正在連線至 Supabase 雲端...</div>
+          
+          <div class="calendar-grid">
+            <div class="calendar-header">日</div>
+            <div class="calendar-header">一</div>
+            <div class="calendar-header">二</div>
+            <div class="calendar-header">三</div>
+            <div class="calendar-header">四</div>
+            <div class="calendar-header">五</div>
+            <div class="calendar-header">六</div>
           </div>
 
-          <section class="calendar-section">
-            <div id="loading-text" class="loading-status">正在連線至 Supabase 雲端...</div>
-            
-            <div class="calendar-grid">
-              <div class="calendar-header">日</div>
-              <div class="calendar-header">一</div>
-              <div class="calendar-header">二</div>
-              <div class="calendar-header">三</div>
-              <div class="calendar-header">四</div>
-              <div class="calendar-header">五</div>
-              <div class="calendar-header">六</div>
-            </div>
-
-            <div id="calendar-days" class="calendar-grid"></div>
-          </section>
-        </div>
+          <div id="calendar-days" class="calendar-grid"></div>
+        </section>
       </div>
-    )}
+    </div>
 
     <script is:inline>
       const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
@@ -417,19 +346,8 @@ if (Astro.request.method === "POST") {
 
       let currentYear = 2026;
       let currentMonthNum = 8; 
-
       let rawActivities = []; 
       let client;
-
-      function getElements() {
-        return {
-          calendarDays: document.getElementById('calendar-days'),
-          calendarTitle: document.getElementById('calendar-title'),
-          loadingText: document.getElementById('loading-text'),
-          btnPrev: document.getElementById('btn-prev-month'),
-          btnNext: document.getElementById('btn-next-month')
-        };
-      }
 
       function initSupabase() {
         if (window.supabase && !client) {
@@ -438,32 +356,90 @@ if (Astro.request.method === "POST") {
         return !!client;
       }
 
-      async function fetchData() {
-        const els = getElements();
-        if (!els.calendarDays) return; 
+      // 檢查 localStorage 登入狀態
+      function checkAuth() {
+        const isAuth = localStorage.getItem("site_authenticated");
+        if (isAuth === "true") {
+          document.getElementById('login-container').style.display = 'none';
+          document.getElementById('main-content').style.display = 'block';
+          fetchData();
+        } else {
+          document.getElementById('login-container').style.display = 'block';
+          document.getElementById('main-content').style.display = 'none';
+        }
+      }
+
+      // 登入處理
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const inputPassword = document.getElementById('password-input').value;
+        const errorMsg = document.getElementById('login-error');
+
         if (!initSupabase()) {
-          setTimeout(fetchData, 100);
+          alert('Supabase 載入中，請稍後再試');
           return;
         }
+
+        try {
+          // 從 Supabase 的 site_settings 抓取密碼
+          const { data, error } = await client
+            .from('site_settings')
+            .select('value')
+            .eq('key', 'SITE_PASSWORD')
+            .single();
+
+          if (error || !data) {
+            errorMsg.innerText = '❌ 無法連線至資料庫取得密碼設定';
+            errorMsg.style.display = 'block';
+            return;
+          }
+
+          const correctPassword = data.value;
+
+          if (inputPassword === correctPassword) {
+            localStorage.setItem("site_authenticated", "true");
+            errorMsg.style.display = 'none';
+            checkAuth();
+          } else {
+            errorMsg.innerText = '❌ 密碼錯誤，請再試一次。';
+            errorMsg.style.display = 'block';
+          }
+        } catch (err) {
+          console.error(err);
+          errorMsg.innerText = '❌ 登入驗證發生錯誤';
+          errorMsg.style.display = 'block';
+        }
+      });
+
+      // 登出處理
+      document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.removeItem("site_authenticated");
+        checkAuth();
+      });
+
+      async function fetchData() {
+        const loadingText = document.getElementById('loading-text');
+        if (!initSupabase()) return;
         
-        if (els.loadingText) els.loadingText.style.display = 'block';
+        if (loadingText) loadingText.style.display = 'block';
         try {
           const { data, error } = await client.from(TABLE_NAME).select('*');
           if (!error && data) {
             rawActivities = data;
-            if (els.loadingText) els.loadingText.style.display = 'none';
+            if (loadingText) loadingText.style.display = 'none';
             renderCalendar();
           }
         } catch (e) { console.error(e); }
       }
 
       function renderCalendar() {
-        const els = getElements();
-        if (!els.calendarDays) return;
+        const calendarDays = document.getElementById('calendar-days');
+        const calendarTitle = document.getElementById('calendar-title');
+        if (!calendarDays) return;
         
-        els.calendarDays.innerHTML = '';
-        if (els.calendarTitle) {
-          els.calendarTitle.innerText = `${currentYear} 年 ${currentMonthNum} 月`;
+        calendarDays.innerHTML = '';
+        if (calendarTitle) {
+          calendarTitle.innerText = `${currentYear} 年 ${currentMonthNum} 月`;
         }
 
         const startWeekDay = new Date(currentYear, currentMonthNum - 1, 1).getDay();
@@ -472,7 +448,7 @@ if (Astro.request.method === "POST") {
         for (let i = 0; i < startWeekDay; i++) {
           const emptyCell = document.createElement('div');
           emptyCell.className = 'calendar-day empty';
-          els.calendarDays.appendChild(emptyCell);
+          calendarDays.appendChild(emptyCell);
         }
 
         for (let day = 1; day <= totalDays; day++) {
@@ -497,14 +473,10 @@ if (Astro.request.method === "POST") {
           dayActs.forEach(act => {
             const item = document.createElement('div');
             item.className = 'activity-item';
-    
             const baseColor = act.color_hex || '#6b7a67'; 
-    
             item.style.borderColor = baseColor;
             item.style.backgroundColor = `${baseColor}12`; 
-            // 🎯 移除 item.style.color = baseColor，讓文字保持 CSS 設定的黑色
 
-            // 🎯 修改此處：拼合時間字串為「開始時間 ~ 結束時間」的完整格式
             const displayTime = (act.time_start && act.time_end) 
               ? `${act.time_start} ~ ${act.time_end}` 
               : (act.time_start || '');
@@ -516,25 +488,27 @@ if (Astro.request.method === "POST") {
             dayCell.appendChild(item);
           });
 
-          els.calendarDays.appendChild(dayCell);
+          calendarDays.appendChild(dayCell);
         }
       }
 
       function init() {
-        const els = getElements();
-        if (els.btnPrev && els.btnNext) {
-          els.btnPrev.addEventListener('click', () => {
+        const btnPrev = document.getElementById('btn-prev-month');
+        const btnNext = document.getElementById('btn-next-month');
+
+        if (btnPrev && btnNext) {
+          btnPrev.addEventListener('click', () => {
             currentMonthNum--;
             if (currentMonthNum < 1) { currentMonthNum = 12; currentYear--; }
             renderCalendar();
           });
-          els.btnNext.addEventListener('click', () => {
+          btnNext.addEventListener('click', () => {
             currentMonthNum++;
             if (currentMonthNum > 12) { currentMonthNum = 1; currentYear++; }
             renderCalendar();
           });
         }
-        fetchData();
+        checkAuth();
       }
 
       if (document.readyState === 'loading') {
