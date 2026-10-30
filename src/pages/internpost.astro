@@ -1,0 +1,664 @@
+---
+// src/pages/ig-dashboard.astro
+if (!Astro.cookies.has("auth_token")) {
+  return Astro.redirect('/');
+}
+---
+
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>上載 IG 觀察貼文</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght=400;500;700&display=swap" rel="stylesheet">
+    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style is:global>
+      :root {
+        --bg-cream: #fbf9f4;       
+        --text-main: #3d4035;      
+        --text-muted: #8a8e7b;    
+        --sage-green: #6b7a67;    
+        --sage-light: #f3f5f0;    
+        --clay-orange: #c88a75;   
+        --border-color: #e6e3da;  
+        --font-serif: "Noto Serif TC", "Georgia", serif;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      
+      body { 
+        background-color: var(--bg-cream); 
+        color: var(--text-main); 
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; 
+        padding: 40px 20px; 
+        letter-spacing: 0.02em;
+        line-height: 1.6;
+      }
+      
+      .container { max-width: 1400px; margin: 0 auto; }
+      
+      .action-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 30px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 20px;
+      }
+      .back-link { 
+        display: inline-block; 
+        color: var(--text-muted); 
+        text-decoration: none; 
+        font-size: 0.95rem; 
+        margin-bottom: 8px;
+        transition: color 0.2s;
+      }
+      .back-link:hover { color: var(--sage-green); }
+      
+      h1 { font-family: var(--font-serif); font-size: 2.2rem; font-weight: 500; color: var(--text-main); }
+      
+      .btn-add-trigger {
+        background: var(--sage-green);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 12px rgba(107,122,103,0.15);
+        transition: transform 0.2s, opacity 0.2s;
+      }
+      .btn-add-trigger:hover { transform: translateY(-1px); opacity: 0.95; }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 25px;
+        align-items: start;
+      }
+
+      .detail-card { 
+        border: 2px solid var(--card-border-color, #6b7a67) !important; 
+        background: var(--card-bg-color, #f3f5f0) !important; 
+        padding: 25px; 
+        border-radius: 20px; 
+        position: relative; 
+        box-shadow: 0 8px 30px rgba(61,64,53,0.02); 
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 450px;
+      }
+      
+      .detail-card h3 { 
+        font-family: var(--font-serif); 
+        font-size: 1.4rem; 
+        margin-bottom: 15px; 
+        padding-right: 50px; 
+        color: var(--text-main) !important; 
+        line-height: 1.3;
+      }
+      
+      .meta-grid { 
+        display: flex;
+        flex-direction: column;
+        gap: 10px; 
+        margin-bottom: 15px;
+      }
+      
+      .meta-item { 
+        font-size: 0.95rem; 
+        color: var(--text-main) !important; 
+        background: var(--meta-bg-color, #eaece6) !important;
+        padding: 8px 12px;
+        border-radius: 8px;
+      }
+
+      .ig-section {
+        margin-top: 10px;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 15px;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .ig-title { font-size: 0.85rem; font-weight: bold; color: #d62976; }
+      
+      .ig-gallery {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .ig-item-wrapper {
+        position: relative;
+        width: 100%;
+      }
+      .ig-gallery img {
+        width: 100%;
+        aspect-ratio: 4 / 5; 
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        display: block;
+      }
+      
+      .btn-download-img {
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
+        padding: 4px 10px;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+      .btn-download-img:hover {
+        background: rgba(0, 0, 0, 0.9);
+      }
+
+      .caption-container {
+        position: relative;
+      }
+      .ig-caption-box {
+        background: #fafafa;
+        padding: 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+        border-left: 3px solid #d62976;
+        color: #333;
+      }
+      .btn-copy-caption {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: var(--sage-light);
+        border: 1px solid var(--border-color);
+        color: var(--sage-green);
+        padding: 2px 6px;
+        font-size: 0.7rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      
+      .btn-edit-icon-trigger { 
+        position: absolute; right: 25px; top: 25px; background: white; border: 2px solid var(--card-border-color, #6b7a67); 
+        color: var(--text-color, #6b7a67); width: 40px; height: 40px; border-radius: 50%; font-size: 1rem; 
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+      }
+
+      .btn-approve-lock {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 15px;
+        padding: 8px 16px;
+        background: #fff;
+        border: 1px solid #6b7a67;
+        color: #6b7a67;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        width: 100%;
+      }
+      .btn-approve-lock.is-approved { background: #e8f5e9; border-color: #2e7d32; color: #2e7d32; }
+
+      .loading-status { text-align: center; color: var(--text-muted); padding: 40px; }
+      .no-data { text-align: center; color: var(--text-muted); padding: 50px; background: white; border-radius: 16px; width: 100%; grid-column: 1 / -1; }
+
+      .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(61, 64, 53, 0.4);
+        backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+      }
+      .modal-overlay.is-active { opacity: 1; pointer-events: auto; }
+      .modal-box { background: white; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 35px; border-radius: 20px; position: relative; }
+      .btn-close-modal { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.6rem; cursor: pointer; }
+      
+      form label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; margin-top: 14px; }
+      form input, form select, form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); background: var(--bg-cream); border-radius: 8px; }
+      
+      .form-gallery-preview { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+      .preview-image-container { position: relative; width: 75px; height: 75px; }
+      .form-gallery-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
+      
+      .btn-remove-preview-img {
+        position: absolute; top: -5px; right: -5px; background: #ff4d4f; color: white;
+        border: none; width: 18px; height: 18px; border-radius: 50%; font-size: 10px;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+      }
+      
+      .btn-submit { width: 100%; padding: 12px; background: var(--sage-green); color: white; border: none; border-radius: 8px; margin-top: 24px; cursor: pointer; }
+      .btn-delete { width: 100%; padding: 10px; background: transparent; color: var(--clay-orange); border: 1px solid var(--clay-orange); border-radius: 8px; margin-top: 12px; cursor: pointer; }
+    
+      @media (max-width: 768px) {h1 { font-size: 1.8rem; }}
+  
+</style>
+  </head>
+  
+  <body>
+    <div class="container">
+      <div class="action-bar">
+        <div>
+          <a href="/" class="back-link">← 返回首頁看板</a>
+          <h1>📸 上載 IG 觀察貼文</h1>
+        </div>
+        <button id="open-add-modal" class="btn-add-trigger">＋ 新增觀察貼文</button>
+      </div>
+
+      <div id="loading" class="loading-status">正在讀取雲端 IG 貼文資料...</div>
+      <div id="details-list" class="card-grid"></div>
+    </div>
+
+    <!-- 表單 Modal 彈窗 -->
+    <div id="form-modal" class="modal-overlay">
+      <div class="modal-box">
+        <button id="close-modal" class="btn-close-modal">&times;</button>
+        <h2 id="form-title">＋ 新增觀察貼文</h2>
+        <form id="activity-form">
+          <input type="hidden" id="form-id" />
+          
+          <label for="intern-select">實習生</label>
+          <select id="intern-select"><option value="new">＋ 新增自訂...</option></select>
+          <div id="new-intern-block" style="margin-top:8px;">
+            <input type="text" id="intern-name-input" placeholder="實習生名字" />
+            <input type="color" id="intern-color-input" value="#6b7a67" style="margin-top:4px; height:40px;"/>
+          </div>
+
+          <label for="activity-name">貼文題目</label>
+          <input type="text" id="activity-name" required />
+
+          <label for="ig-images-input">📸 IG Post 多張相片 (自動壓縮)</label>
+          <input type="file" id="ig-images-input" accept="image/*" multiple />
+          <div id="form-preview-gallery" class="form-gallery-preview"></div>
+
+          <label for="ig-caption-input">📝 IG Post 預定內文</label>
+          <textarea id="ig-caption-input" rows="5"></textarea>
+
+          <button type="submit" class="btn-submit">儲存此紀錄至雲端</button>
+          <button type="button" id="btn-delete" class="btn-delete" style="display: none;">永久刪除此紀錄</button>
+        </form>
+      </div>
+    </div>
+
+    <script is:inline>
+      const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+      const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+      const TABLE_NAME = 'ig_posts';
+      const BUCKET_NAME = 'activity-images';
+      
+      let client = window.supabase.createClient(supabaseUrl, supabaseKey);
+      let dayActivities = [];
+      let globalInternColors = {};
+      let uploadedImageUrls = [];
+
+      const listContainer = document.getElementById('details-list');
+      const loadingText = document.getElementById('loading');
+      const activityForm = document.getElementById('activity-form');
+      const btnDelete = document.getElementById('btn-delete');
+      const formTitle = document.getElementById('form-title');
+      const internSelect = document.getElementById('intern-select');
+      const newInternBlock = document.getElementById('new-intern-block');
+      const internNameInput = document.getElementById('intern-name-input');
+      const internColorInput = document.getElementById('intern-color-input');
+      const formModal = document.getElementById('form-modal');
+      const igImagesInput = document.getElementById('ig-images-input');
+      const formPreviewGallery = document.getElementById('form-preview-gallery');
+      const igCaptionInput = document.getElementById('ig-caption-input');
+
+      function openModal() { formModal.classList.add('is-active'); }
+      function closeModalWindow() { formModal.classList.remove('is-active'); }
+      document.getElementById('open-add-modal').addEventListener('click', () => { resetForm(); openModal(); });
+      document.getElementById('close-modal').addEventListener('click', closeModalWindow);
+
+      // 強制觸發圖片真實下載的函式
+      async function downloadImage(url, filename) {
+        try {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        } catch (error) {
+          console.error("下載失敗，嘗試新分頁打開:", error);
+          window.open(url, '_blank');
+        }
+      }
+
+      function compressImage(file) {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let width = img.width; let height = img.height;
+              if (width > 1200) { height = Math.round((height * 1200) / width); width = 1200; }
+              canvas.width = width; canvas.height = height;
+              canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+              canvas.toBlob((blob) => { resolve(new File([blob], file.name, { type: 'image/jpeg' })); }, 'image/jpeg', 0.85);
+            };
+          };
+        });
+      }
+
+      igImagesInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        const loadingIndicator = document.createElement('span');
+        loadingIndicator.innerText = '上載中...';
+        formPreviewGallery.appendChild(loadingIndicator);
+
+        let prefix = internSelect.value === 'new' ? (internNameInput.value || 'temp') : internSelect.value;
+        for (let file of files) {
+          const compressed = await compressImage(file);
+          const fileName = `${prefix}/${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
+          const { data, error } = await client.storage.from(BUCKET_NAME).upload(fileName, compressed);
+          if (!error) {
+            const { data: urlData } = client.storage.from(BUCKET_NAME).getPublicUrl(fileName);
+            uploadedImageUrls.push(urlData.publicUrl);
+          } else {
+            console.error("圖片上傳失敗:", error);
+          }
+        }
+        renderFormPreviewGallery();
+      });
+
+      function renderFormPreviewGallery() {
+        formPreviewGallery.innerHTML = '';
+        uploadedImageUrls.forEach((url, index) => {
+          const container = document.createElement('div');
+          container.className = 'preview-image-container';
+          const img = document.createElement('img'); 
+          img.src = url; 
+
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'btn-remove-preview-img';
+          removeBtn.innerHTML = '&times;';
+          
+          removeBtn.addEventListener('click', () => {
+            uploadedImageUrls.splice(index, 1);
+            renderFormPreviewGallery();
+          });
+
+          container.appendChild(img);
+          container.appendChild(removeBtn);
+          formPreviewGallery.appendChild(container);
+        });
+      }
+
+      async function updateInternDropdown() {
+        const { data } = await client.from(TABLE_NAME).select('intern');
+        internSelect.innerHTML = '<option value="new">＋ 新增自訂...</option>';
+        if (data) {
+          globalInternColors = {};
+          const presetColors = ['#6b7a67', '#c88a75', '#8a8e7b', '#a4b19e', '#cfb095'];
+          let colorIdx = 0;
+          data.forEach(r => { 
+            if(r.intern) {
+              const name = r.intern.trim();
+              if (!globalInternColors[name]) {
+                globalInternColors[name] = presetColors[colorIdx % presetColors.length];
+                colorIdx++;
+              }
+            }
+          });
+          Object.keys(globalInternColors).forEach(name => {
+            const opt = document.createElement('option'); opt.value = name; opt.innerText = name; internSelect.appendChild(opt);
+          });
+        }
+      }
+      internSelect.addEventListener('change', () => { newInternBlock.style.display = internSelect.value === 'new' ? 'block' : 'none'; });
+
+      async function fetchDayData() {
+        loadingText.style.display = 'block';
+        const { data, error } = await client.from(TABLE_NAME).select('*').order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error("讀取失敗，嘗試改用 id 排序:", error);
+          const { data: fallbackData } = await client.from(TABLE_NAME).select('*').order('id', { ascending: false });
+          dayActivities = fallbackData || [];
+        } else {
+          dayActivities = data || [];
+        }
+        
+        loadingText.style.display = 'none'; 
+        renderDetails();
+      }
+
+      function renderDetails() {
+        listContainer.innerHTML = '';
+        if (dayActivities.length === 0) {
+          listContainer.innerHTML = '<div class="no-data">目前沒有任何 IG 貼文紀錄。</div>'; return;
+        }
+        
+        dayActivities.forEach(act => {
+          const card = document.createElement('div');
+          card.className = 'detail-card';
+          let themeColor = globalInternColors[act.intern?.trim()] || '#6b7a67';
+          card.style.setProperty('--card-border-color', themeColor);
+          card.style.setProperty('--card-bg-color', `${themeColor}12`);
+          card.style.setProperty('--meta-bg-color', `${themeColor}1E`);
+
+          let images = [];
+          if (act.image_urls) {
+            images = typeof act.image_urls === 'string' ? JSON.parse(act.image_urls) : act.image_urls;
+          }
+
+          const displayTitle = act.post_title || '未命名貼文';
+          let cardHtml = '';
+
+          if (act.is_approved) {
+            cardHtml = `
+              <div>
+                <h3>[已核准公開] ${displayTitle}</h3>
+                <button class="btn-edit-icon-trigger" title="解鎖修改">🔒</button>
+                <div class="meta-grid">
+                  <div class="meta-item">👤 實習生：<strong>${act.intern || '無'}</strong></div>
+                </div>
+                <div class="ig-section">
+                  <div class="ig-title">📸 Instagram 宣傳大圖</div>
+                  <div class="ig-gallery">
+                    ${images.map((url, idx) => `
+                      <div class="ig-item-wrapper">
+                        <img src="${url}" alt="IG Image ${idx+1}" />
+                        <button class="btn-download-img" data-url="${url}" data-filename="ig-photo-${idx+1}.jpg">📥 下載</button>
+                      </div>
+                    `).join('')}
+                  </div>
+                  ${act.ig_caption ? `
+                    <div class="caption-container">
+                      <button class="btn-copy-caption" onclick="navigator.clipboard.writeText(\`${act.ig_caption.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`); alert('文案已複製！');">📋 複製內文</button>
+                      <div class="ig-caption-box">${act.ig_caption}</div>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+              <div>
+                <button class="btn-approve-lock is-approved" data-id="${act.id}">✅ 已准許（點擊取消准許）</button>
+              </div>
+            `;
+          } else {
+            cardHtml = `
+              <div>
+                <h3>${displayTitle}</h3>
+                <button class="btn-edit-icon-trigger" title="修改活動">✏️</button>
+                <div class="meta-grid">
+                  <div class="meta-item">👤 實習生：<strong>${act.intern || '無'}</strong></div>
+                </div>
+                <div class="ig-section">
+                  <div class="ig-title">📸 Instagram 預覽 (草稿)</div>
+                  <div class="ig-gallery">
+                    ${images.map((url, idx) => `
+                      <div class="ig-item-wrapper">
+                        <img src="${url}" />
+                        <button class="btn-download-img" data-url="${url}" data-filename="ig-photo-${idx+1}.jpg">📥 下載</button>
+                      </div>
+                    `).join('')}
+                  </div>
+                  ${act.ig_caption ? `<div class="ig-caption-box">${act.ig_caption}</div>` : ''}
+                </div>
+              </div>
+              <div>
+                <button class="btn-approve-lock" data-id="${act.id}">📌 准許貼文核准鎖定</button>
+              </div>
+            `;
+          }
+
+          card.innerHTML = cardHtml;
+
+          // 綁定下載按鈕事件（透過 Fetch Blob 強制下載）
+          card.querySelectorAll('.btn-download-img').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              const url = btn.getAttribute('data-url');
+              const filename = btn.getAttribute('data-filename');
+              downloadImage(url, filename);
+            });
+          });
+
+          card.querySelector('.btn-edit-icon-trigger').addEventListener('click', async () => {
+            if (act.is_approved) {
+              const inputPwd = prompt('此貼文已核准鎖定，請輸入原設定密碼進行解鎖：');
+              if (inputPwd !== act.approval_password) { alert('密碼錯誤！'); return; }
+            }
+            fillFormForEdit(act, themeColor, images);
+          });
+
+          // 點擊核准鎖定 logic
+          card.querySelector('.btn-approve-lock').addEventListener('click', async () => {
+            if (act.is_approved) {
+              const inputPwd = prompt('請輸入密碼以解除准許鎖定：');
+              if (inputPwd === act.approval_password) {
+                await client.from(TABLE_NAME).update({ is_approved: false, approval_password: '' }).eq('id', act.id);
+                await fetchDayData();
+              } else { alert('密碼錯誤！'); }
+            } else {
+              const pwd = prompt('請設定此貼文的修改管理密碼：');
+              if (!pwd) { alert('必須設定密碼才能准許！'); return; }
+
+              // 自動處理內文修飾 (開頭加標題, 結尾加簽名)
+              let updatedCaption = act.ig_caption || '';
+              const titleText = act.post_title || '無題';
+              const internText = act.intern || '實習生';
+              const footerText = `- 實習誌 by ${internText} -`;
+
+              // 檢查開頭是否已有標題
+              if (!updatedCaption.startsWith(`【${titleText}】`)) {
+                updatedCaption = `【${titleText}】\n\n` + updatedCaption;
+              }
+              // 檢查結尾是否已有簽名
+              if (!updatedCaption.includes(footerText)) {
+                updatedCaption = updatedCaption.trim() + `\n\n${footerText}`;
+              }
+
+              await client.from(TABLE_NAME).update({ 
+                is_approved: true, 
+                approval_password: pwd,
+                ig_caption: updatedCaption
+              }).eq('id', act.id);
+
+              await fetchDayData();
+            }
+          });
+
+          listContainer.appendChild(card);
+        });
+      }
+
+      function fillFormForEdit(act, themeColor, images) {
+        formTitle.innerText = '✏️ 修改貼文紀錄'; btnDelete.style.display = 'block';
+        document.getElementById('form-id').value = act.id;
+        document.getElementById('activity-name').value = act.post_title || '';
+        igCaptionInput.value = act.ig_caption || '';
+        
+        uploadedImageUrls = images ? [...images] : [];
+        renderFormPreviewGallery();
+
+        if (act.intern && Array.from(internSelect.options).map(o=>o.value).includes(act.intern)) {
+          internSelect.value = act.intern; newInternBlock.style.display = 'none';
+        } else if (act.intern) {
+          internSelect.value = 'new'; newInternBlock.style.display = 'block'; internNameInput.value = act.intern;
+          internColorInput.value = themeColor;
+        }
+        openModal();
+      }
+
+      activityForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('form-id').value;
+        let finalInternName = internSelect.value === 'new' ? internNameInput.value.trim() : internSelect.value;
+        
+        if (internSelect.value === 'new') {
+          globalInternColors[finalInternName] = internColorInput.value;
+        }
+        
+        const imagePayload = JSON.stringify(uploadedImageUrls);
+
+        const payload = {
+          intern: finalInternName, 
+          post_title: document.getElementById('activity-name').value,
+          image_urls: imagePayload,                                   
+          ig_caption: igCaptionInput.value                            
+        };
+
+        let result;
+        if (id) { 
+          result = await client.from(TABLE_NAME).update(payload).eq('id', id); 
+        } else { 
+          result = await client.from(TABLE_NAME).insert([payload]); 
+        }
+
+        if (result.error) {
+          alert(`❌ 寫入雲端失敗！\n原因描述: ${result.error.message}`);
+          console.error("Supabase Error:", result.error);
+        } else {
+          closeModalWindow(); 
+          resetForm(); 
+          await updateInternDropdown(); 
+          await fetchDayData();
+        }
+      });
+
+      btnDelete.addEventListener('click', async () => {
+        const id = document.getElementById('form-id').value;
+        if (id && confirm('確定刪除此貼文紀錄？')) {
+          const { error } = await client.from(TABLE_NAME).delete().eq('id', id);
+          if(error) {
+            alert(`刪除失敗: ${error.message}`);
+          } else {
+            closeModalWindow(); resetForm(); await fetchDayData();
+          }
+        }
+      });
+
+      function resetForm() {
+        activityForm.reset(); document.getElementById('form-id').value = '';
+        formTitle.innerText = '＋ 新增觀察貼文'; btnDelete.style.display = 'none';
+        internSelect.value = 'new'; newInternBlock.style.display = 'block';
+        uploadedImageUrls = []; formPreviewGallery.innerHTML = '';
+      }
+
+      (async () => { await updateInternDropdown(); await fetchDayData(); })();
+    </script>
+  </body>
+</html>

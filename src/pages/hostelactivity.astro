@@ -1,0 +1,669 @@
+---
+// src/pages/schedule.astro
+
+const timeSlots = [
+  "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00",
+  "17:00-18:00", "18:00-19:00", "19:00-20:00", "20:00-21:00",
+  "21:00-22:00", "22:00-23:00"
+];
+
+const dayNames = ["一", "二", "三", "四", "五", "六", "日"];
+---
+
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>空間客棧開放時間表</title>
+  </head>
+  <body>
+    <!-- 頂部功能列 -->
+    <div class="top-bar">
+      <div class="location-badge">🌲 當前地點：空間客棧</div>
+      <div class="month-selector-container">
+        <label for="monthSelector" style="font-weight: 600; font-size: 0.9rem;">選擇月份：</label>
+        <select id="monthSelector">
+          <option value="2026-07">2026-07</option>
+          <option value="2026-08">2026-08</option>
+          <option value="2026-09">2026-09</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 主頁面佈局 -->
+    <div class="main-layout">
+      
+      <!-- 左側：時間表 -->
+      <div class="schedule-container">
+        <div class="schedule-header">
+          <h2 class="schedule-title" id="weekRangeTitle">載入中...</h2>
+          <div class="nav-buttons">
+            <button id="btnPrev" class="nav-btn">◀ <span class="btn-text">上一週</span></button>
+            <button id="btnToday" class="nav-btn btn-today">回到今天</button>
+            <button id="btnNext" class="nav-btn"><span class="btn-text">下一週</span> ▶</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="schedule-table">
+            <thead>
+              <tr id="tableHeaderRow">
+                <th class="th-time">時間</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              {timeSlots.map(slot => (
+                <tr data-slot={slot}>
+                  <td class="time-slot">{slot}</td>
+                  {dayNames.map((_, index) => (
+                    <td
+                      class="schedule-cell cursor-pointer"
+                      data-slot={slot}
+                      data-day-idx={index}
+                    ></td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div class="loading-status" id="loadingStatus">SDK 載入中...</div>
+      </div>
+
+      <!-- 右側：編輯面板 -->
+      <div class="side-panel" id="sidePanel">
+        <div class="panel-empty-state" id="panelEmptyState">
+          <p>👈 請先點選左側格子<br>可多選，選好後再於此填寫資料</p>
+        </div>
+        
+        <div class="panel-content hidden" id="panelContentBlock">
+          <h3 id="panelTitle">批次編輯</h3>
+          <p id="panelSubtitle" class="panel-subtitle"></p>
+          <hr />
+          
+          <div class="form-group">
+            <label for="cellName">當值人名 *：</label>
+            <input type="text" id="cellName" />
+          </div>
+
+          <div class="form-group">
+            <label for="cellActivity">小活動 (選填)：</label>
+            <input type="text" id="cellActivity" placeholder="未填寫會自動顯示「冇」" />
+          </div>
+
+          <div class="form-group">
+            <label for="eventType">標籤顏色風格：</label>
+            <select id="eventType">
+              <option value="tag-red">🔴 紅色系 (飲食類)</option>
+              <option value="tag-blue">🔵 藍色系 (書本類)</option>
+              <option value="tag-purple">🟣 紫色系 (興趣類)</option>
+              <option value="tag-yellow">🟡 黃色系 (其他)</option>
+            </select>
+          </div>
+
+          <div class="panel-actions">
+            <button id="btnSave" class="btn-primary">確認儲存</button>
+            <button id="btnDeleteBatch" class="btn-danger">❌ 刪除資料</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script is:inline>
+      let client;
+      const TABLE_NAME = 'intern_schedules';
+      
+      const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyQVHzsffpzoh0kPWCe7FtuEYsqjqR43bZoDuvJjGKQz6Op8ywBmwXWjO94IhBW27MB/exec";
+
+      let baseDate = new Date();
+      // 將時間歸零，防止跨時區日光節約或小時偏差導致日期推算錯誤
+      baseDate.setHours(0, 0, 0, 0);
+
+      let weekDates = [];
+      let selectedCells = [];
+      const dayNames = ["一", "二", "三", "四", "五", "六", "日"];
+      
+      const monthSelector = document.getElementById('monthSelector');
+      const weekRangeTitle = document.getElementById('weekRangeTitle');
+      const tableHeaderRow = document.getElementById('tableHeaderRow');
+      const loadingStatus = document.getElementById('loadingStatus');
+      
+      const sidePanel = document.getElementById('sidePanel');
+      const panelEmptyState = document.getElementById('panelEmptyState');
+      const panelContentBlock = document.getElementById('panelContentBlock');
+      const panelTitle = document.getElementById('panelTitle');
+      const panelSubtitle = document.getElementById('panelSubtitle');
+      
+      const cellNameInput = document.getElementById('cellName');
+      const cellActivityInput = document.getElementById('cellActivity');
+      const eventTypeSelect = document.getElementById('eventType');
+      const btnSave = document.getElementById('btnSave');
+      const btnDeleteBatch = document.getElementById('btnDeleteBatch');
+
+      // 🛠️ 關鍵輔助函式：將純字串 (YYYY-MM-DD) 安全轉為本地 Date 物件，避免 UTC 時區減一天
+      function parseLocalDate(dateStr) {
+        if (!dateStr) return new Date();
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        }
+        return new Date(dateStr);
+      }
+
+      function isMobile() {
+        return window.innerWidth <= 768;
+      }
+
+      function updateButtonTexts() {
+        const prevBtnText = document.querySelector('#btnPrev .btn-text');
+        const nextBtnText = document.querySelector('#btnNext .btn-text');
+        if (prevBtnText && nextBtnText) {
+          if (isMobile()) {
+            prevBtnText.innerText = "上 3 天";
+            nextBtnText.innerText = "下 3 天";
+          } else {
+            prevBtnText.innerText = "上一週";
+            nextBtnText.innerText = "下一週";
+          }
+        }
+      }
+
+      function locateToToday() {
+        baseDate = new Date();
+        baseDate.setHours(0,0,0,0);
+        
+        if (!isMobile()) {
+          const day = baseDate.getDay();
+          const diff = baseDate.getDate() - day + (day === 0 ? -6 : 1);
+          baseDate = new Date(baseDate.setDate(diff));
+          baseDate.setHours(0,0,0,0);
+        }
+
+        syncMonthSelector();
+        resetSidePanel();
+        renderTimeline();
+      }
+
+      // 自動同步月份選單的顯示
+      function syncMonthSelector() {
+        const yyyy = baseDate.getFullYear();
+        const mm = String(baseDate.getMonth() + 1).padStart(2, '0');
+        const currentMonthStr = `${yyyy}-${mm}`;
+        
+        // 如果選單裡面有該月份選項就選取，沒有的話動態新增選項
+        let exists = Array.from(monthSelector.options).some(opt => opt.value === currentMonthStr);
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = currentMonthStr;
+          opt.innerText = currentMonthStr;
+          monthSelector.appendChild(opt);
+        }
+        monthSelector.value = currentMonthStr;
+      }
+
+      function loadSupabaseAndInit() {
+        const script = document.createElement('script');
+        script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+        script.async = true;
+        script.onload = () => {
+          try {
+            if (window.supabase) {
+              const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+              const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+              client = window.supabase.createClient(supabaseUrl, supabaseKey);
+              updateButtonTexts();
+              window.addEventListener('resize', () => { updateButtonTexts(); renderTimeline(); });
+              locateToToday();
+            }
+          } catch (err) { showError(`初始化失敗: ${err.message}`); }
+        };
+        document.head.appendChild(script);
+      }
+
+      function showError(msg) {
+        loadingStatus.style.color = "#ef4444";
+        loadingStatus.innerText = msg;
+      }
+
+      function renderTimeline() {
+        weekDates = [];
+        while(tableHeaderRow.children.length > 1) {
+          tableHeaderRow.removeChild(tableHeaderRow.lastChild);
+        }
+
+        const mobileMode = isMobile();
+        const displayCount = mobileMode ? 4 : 7;
+
+        for (let i = 0; i < displayCount; i++) {
+          let date = new Date(baseDate);
+          date.setDate(baseDate.getDate() + i);
+          
+          let yyyy = date.getFullYear();
+          let mm = String(date.getMonth() + 1).padStart(2, '0');
+          let dd = String(date.getDate()).padStart(2, '0');
+          let dateString = `${yyyy}-${mm}-${dd}`;
+          weekDates.push(dateString);
+
+          let dayNum = date.getDay();
+          let dayNameIdx = dayNum === 0 ? 6 : dayNum - 1;
+
+          let th = document.createElement('th');
+          th.innerText = `${date.getDate()}/${date.getMonth() + 1} (${dayNames[dayNameIdx]})`;
+          th.setAttribute('data-day-idx', i);
+          if (dayNum === 0) th.className = 'th-sun';
+
+          tableHeaderRow.appendChild(th);
+        }
+
+        // 動態重建 tbody 內所有時段的儲存格
+        document.querySelectorAll('#tableBody tr').forEach(row => {
+          while(row.children.length > 1) {
+            row.removeChild(row.lastChild);
+          }
+          const slot = row.getAttribute('data-slot');
+
+          for(let i = 0; i < displayCount; i++) {
+            let td = document.createElement('td');
+            td.className = 'schedule-cell cursor-pointer';
+            td.setAttribute('data-slot', slot);
+            td.setAttribute('data-day-idx', i);
+            td.setAttribute('data-date', weekDates[i]);
+            
+            td.addEventListener('click', () => handleCellClick(td));
+            row.appendChild(td);
+          }
+        });
+
+        let startText = `${baseDate.getDate()}/${baseDate.getMonth() + 1}`;
+        let endDate = new Date(baseDate);
+        endDate.setDate(baseDate.getDate() + (displayCount - 1));
+        weekRangeTitle.innerText = `${startText} ~ ${endDate.getDate()}/${endDate.getMonth() + 1} 時間表`;
+
+        syncMonthSelector();
+        fetchAndRenderSchedule();
+      }
+
+      async function fetchAndRenderSchedule() {
+        loadingStatus.style.color = "#64748b";
+        loadingStatus.innerText = '正在同步資料庫...';
+        
+        document.querySelectorAll('.schedule-cell').forEach(cell => {
+          cell.innerHTML = '';
+          cell.removeAttribute('data-id');
+          cell.className = selectedCells.includes(cell) ? 'schedule-cell cursor-pointer cell-selected' : 'schedule-cell cursor-pointer';
+        });
+
+        try {
+          const { data, error } = await client
+            .from(TABLE_NAME)
+            .select('*')
+            .gte('day_key', weekDates[0])
+            .lte('day_key', weekDates[weekDates.length - 1]);
+          
+          if (error) throw error;
+
+data.forEach(row => {
+  // 精準匹配日期字串，避免受 ISO 時間戳影響
+  const cell = document.querySelector(`.schedule-cell[data-slot="${row.time_slot}"][data-date="${row.day_key}"]`);
+  if (cell) {
+    const rawContent = row.content || '';
+    let name = rawContent; 
+    let activity = '';
+    
+    if (rawContent.includes(' / ')) {
+      const parts = rawContent.split(' / ');
+      name = parts[0]; 
+      activity = parts[1];
+    }
+
+    const actHtml = activity ? `<div class="display-activity">${activity}</div>` : '';
+
+    // 🔑 關鍵修改：將 row.event_type (顏色 class) 加在裡面的 cell-card，而不是 td 本身！
+    cell.innerHTML = `
+      <div class="cell-card ${row.event_type || ''}">
+        <div class="display-name">${name}</div>
+        ${actHtml}
+      </div>
+    `;
+
+    cell.classList.add('cell-has-data');
+    cell.setAttribute('data-id', row.id);
+  }
+});
+loadingStatus.innerText = '● 同步完成';
+} catch (err) { showError(`❌ 載入失敗: ${err.message}`); }
+}
+
+      function handleCellClick(cell) {
+        if (selectedCells.includes(cell)) {
+          selectedCells = selectedCells.filter(el => el !== cell);
+          cell.classList.remove('cell-selected');
+        } else {
+          selectedCells.push(cell);
+          cell.classList.add('cell-selected');
+        }
+
+        if (selectedCells.length === 0) {
+          resetSidePanel();
+          return;
+        }
+
+        panelEmptyState.classList.add('hidden');
+        panelContentBlock.classList.remove('hidden');
+        sidePanel.classList.add('active');
+
+        panelTitle.innerText = `已選取 ${selectedCells.length} 個格子`;
+        panelSubtitle.innerText = "請在下方輸入或修改選取格的資料。";
+
+        if (selectedCells.length === 1) {
+          const id = selectedCells[0].getAttribute('data-id');
+          if (id) {
+            const nameDiv = selectedCells[0].querySelector('.display-name');
+            const actDiv = selectedCells[0].querySelector('.display-activity');
+            cellNameInput.value = nameDiv ? nameDiv.innerText : '';
+            cellActivityInput.value = actDiv ? actDiv.innerText : '';
+            const currentType = Array.from(selectedCells[0].classList).find(cls => ['tag-red', 'tag-blue', 'tag-purple', 'tag-yellow'].includes(cls));
+            eventTypeSelect.value = currentType || 'tag-red';
+            return;
+          }
+        }
+        cellNameInput.value = '';
+        cellActivityInput.value = '';
+      }
+
+      // 🛠️ 修正：轉換為 Google Form 選項字串時，使用自訂解析 safe parse 避免減一天的問題
+      function formatFormText(cell, activity) {
+        const dateStr = cell.getAttribute('data-date'); // YYYY-MM-DD
+        const slot = cell.getAttribute('data-slot');   // HH:MM-HH:MM
+        
+        // 安全轉為本地 Date 物件
+        const d = parseLocalDate(dateStr);
+        const dayNum = d.getDay();
+        const dayNameIdx = dayNum === 0 ? 6 : dayNum - 1;
+        const formattedDate = `${d.getDate()}/${d.getMonth() + 1} (${dayNames[dayNameIdx]})`;
+        
+        const [startTime, endTime] = slot.split('-');
+        const actText = activity ? activity : '冇';
+        
+        return `${formattedDate} ${startTime} - ${endTime} (小活動: ${actText})`;
+      }
+
+      // 核心跨域通訊：透過 JSONP 呼叫 GAS
+      function sendToGAS(action, text) {
+        return new Promise((resolve, reject) => {
+          let script;
+          const cbName = 'gas_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+          const timeout = setTimeout(() => {
+            cleanUp();
+            reject(new Error("Google Form 請求超時，請檢查 GAS 部署與權限"));
+          }, 10000);
+
+          function cleanUp() {
+            clearTimeout(timeout);
+            delete window[cbName];
+            if (script && script.parentNode) script.parentNode.removeChild(script);
+          }
+
+          window[cbName] = function(response) {
+            cleanUp();
+            if (response && response.status === 'success') {
+              resolve(response.message);
+            } else {
+              reject(new Error(response ? response.message : '未知錯誤'));
+            }
+          };
+
+          script = document.createElement('script');
+          script.src = `${GAS_WEB_APP_URL}?action=${encodeURIComponent(action)}&text=${encodeURIComponent(text)}&callback=${cbName}`;
+          script.onerror = () => {
+            cleanUp();
+            reject(new Error("連線至 Google Form 失敗，請確認 GAS 網址正確"));
+          };
+
+          document.body.appendChild(script);
+        });
+      }
+
+      // 確認儲存按鈕
+      btnSave.addEventListener('click', async () => {
+        const name = cellNameInput.value.trim();
+        const activity = cellActivityInput.value.trim();
+        if (!name) { alert('請輸入當值人名！'); return; }
+
+        const finalContent = activity ? `${name} / ${activity}` : name;
+        const eventType = eventTypeSelect.value;
+
+        loadingStatus.style.color = "#64748b";
+        loadingStatus.innerText = '正在儲存至 Supabase 與 Google Form...';
+        const cellsToSave = [...selectedCells];
+        resetSidePanel();
+
+        try {
+          // A. 同步寫入 Supabase
+          const promises = cellsToSave.map(async (cell) => {
+            const slot = cell.getAttribute('data-slot');
+            const date = cell.getAttribute('data-date');
+            const id = cell.getAttribute('data-id');
+
+            if (id) {
+              return client.from(TABLE_NAME).update({ content: finalContent, event_type: eventType }).eq('id', id);
+            } else {
+              return client.from(TABLE_NAME).insert([{ time_slot: slot, day_key: date, content: finalContent, event_type: eventType }]);
+            }
+          });
+          await Promise.all(promises);
+
+          // B. 發送至 Google Form
+          for (const cell of cellsToSave) {
+            const formText = formatFormText(cell, activity);
+            await sendToGAS("create", formText);
+          }
+
+          loadingStatus.style.color = "#16a34a";
+          loadingStatus.innerText = '● 同步完成 (Supabase & Google Form)';
+          renderTimeline();
+        } catch (err) { showError(`❌ 儲存失敗: ${err.message}`); }
+      });
+
+      // 刪除按鈕
+      btnDeleteBatch.addEventListener('click', async () => {
+        if (selectedCells.length === 0) return;
+        if (confirm(`確定要清空這 ${selectedCells.length} 個時段的資料嗎？`)) {
+          loadingStatus.style.color = "#64748b";
+          loadingStatus.innerText = '正在刪除 Supabase 與 Google Form 資料...';
+          const cellsToDelete = [...selectedCells];
+          resetSidePanel();
+
+          try {
+            // A. 向 GAS 發送刪除請求
+            for (const cell of cellsToDelete) {
+              const actDiv = cell.querySelector('.display-activity');
+              const activity = actDiv ? actDiv.innerText : '';
+              const formText = formatFormText(cell, activity);
+              await sendToGAS("delete", formText);
+            }
+
+            // B. 從 Supabase 刪除
+            const ids = cellsToDelete.map(cell => cell.getAttribute('data-id')).filter(id => id !== null);
+            if (ids.length > 0) {
+              const { error } = await client.from(TABLE_NAME).delete().in('id', ids);
+              if (error) throw error;
+            }
+
+            loadingStatus.style.color = "#16a34a";
+            loadingStatus.innerText = '● 刪除完成';
+            renderTimeline();
+          } catch (err) { showError(`❌ 刪除失敗: ${err.message}`); }
+        }
+      });
+
+      function resetSidePanel() {
+        panelContentBlock.classList.add('hidden');
+        panelEmptyState.classList.remove('hidden');
+        sidePanel.classList.remove('active');
+        selectedCells.forEach(el => el.classList.remove('cell-selected'));
+        selectedCells = [];
+      }
+
+      document.getElementById('btnPrev').addEventListener('click', () => {
+        const offset = isMobile() ? 3 : 7;
+        baseDate.setDate(baseDate.getDate() - offset);
+        resetSidePanel();
+        renderTimeline();
+      });
+      
+      document.getElementById('btnNext').addEventListener('click', () => {
+        const offset = isMobile() ? 3 : 7;
+        baseDate.setDate(baseDate.getDate() + offset);
+        resetSidePanel();
+        renderTimeline();
+      });
+      
+      document.getElementById('btnToday').addEventListener('click', () => { locateToToday(); });
+      
+      monthSelector.addEventListener('change', (e) => {
+        const [year, month] = e.target.value.split('-');
+        baseDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+        baseDate.setHours(0,0,0,0);
+        resetSidePanel();
+        renderTimeline();
+      });
+
+      loadSupabaseAndInit();
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  body {
+    margin: 0; padding: 20px;
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: #f4f7f5; color: #334155;
+  }
+
+  .top-bar {
+    max-width: 1400px; margin: 0 auto 15px auto;
+    display: flex; justify-content: space-between; align-items: center;
+    background: white; padding: 12px 20px; border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .location-badge { background-color: #1e5e3a; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold; }
+  .month-selector-container { display: flex; gap: 8px; align-items: center; }
+  .month-selector-container select { padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; font-weight: bold; background: white; }
+
+  .main-layout { display: flex; gap: 20px; max-width: 1400px; margin: 0 auto; align-items: flex-start; }
+  .schedule-container { flex: 1; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+  .schedule-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .schedule-title { color: #1e5e3a; font-size: 1.15rem; font-weight: bold; margin: 0; }
+  .nav-buttons { display: flex; gap: 8px; }
+  .nav-btn { background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+  .btn-today { background-color: #1e5e3a; color: white; border: none; font-weight: bold; }
+
+  .table-responsive { overflow-x: auto; }
+
+  /* 🔑 關鍵 1：table-layout: fixed 強制所有日期欄位寬度嚴格平分 */
+  .schedule-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    text-align: center;
+    font-size: 0.9rem;
+    background-color: #ffffff;
+  }
+  
+  /* 🔑 關鍵 2：正確繪製清晰的 1px 灰色邊框，並使用 padding-box 避免背景色溢出吃掉左右邊框 */
+  .schedule-table th, 
+/* 清空 td 的原生背景，讓 border 露出來 */
+.schedule-table td {
+  padding: 2px !important; /* 留出 2px 的安全距離 */
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1 !important;
+    height: 70px;
+    box-sizing: border-box;
+    position: relative;
+    background-clip: padding-box !important; /* 防止底色吃掉邊框 */
+    vertical-align: middle;
+}
+
+/* 獨立內襯卡片，負責顯示背景顏色與主題 */
+.cell-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 2px;
+}
+
+/* 顏色只套用在卡片上，完全不會吃掉表格邊框 */
+.tag-red { background-color: #fee2e2 !important; color: #b91c1c !important; }    
+.tag-blue { background-color: #dbeafe !important; color: #1d4ed8 !important; }  
+.tag-purple { background-color: #f3e8ff !important; color: #6b21a8 !important; }
+.tag-yellow { background-color: #fef9c3 !important; color: #854d0e !important; }
+  
+  .schedule-table th { background-color: #f1f5f9; color: #475569; font-weight: 600; }
+  .th-sun { color: #ef4444 !important; }
+  .time-slot { font-weight: 600; background-color: #f8fafc !important; color: #334155; width: 100px; }
+
+  .cursor-pointer { cursor: pointer; transition: background-color 0.15s; }
+  .cursor-pointer:hover { background-color: #f8fafc; }
+  
+  /* 點擊選取金黃框線效果 */
+  .cell-selected {
+    outline: 3px solid #b45309 !important;
+    outline-offset: -3px;
+    z-index: 2;
+  }
+  
+  .cell-active {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    width: 100%;
+    word-break: break-all; /* 防止文字太長撐開左右欄位 */
+  }
+
+  .display-name { font-weight: 700; font-size: 0.88rem; line-height: 1.2; }
+  .display-activity { font-size: 0.78rem; opacity: 0.85; background: rgba(255, 255, 255, 0.55); padding: 2px 4px; border-radius: 3px; max-width: 95%; }
+
+  .tag-red { background-color: #fee2e2 !important; color: #b91c1c !important; }    
+  .tag-blue { background-color: #dbeafe !important; color: #1d4ed8 !important; }  
+  .tag-purple { background-color: #f3e8ff !important; color: #6b21a8 !important; }
+  .tag-yellow { background-color: #fef9c3 !important; color: #854d0e !important; }
+
+  .loading-status { font-size: 0.85rem; color: #64748b; text-align: right; margin-top: 10px; font-weight: bold; }
+
+  .side-panel { width: 300px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; position: sticky; top: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+  .side-panel.active { border-color: #b45309; }
+  .panel-empty-state { text-align: center; color: #94a3b8; padding: 40px 0; font-size: 0.95rem; line-height: 1.6; }
+  .panel-subtitle { color: #64748b; font-size: 0.8rem; margin: -5px 0 15px 0; }
+  hr { border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 15px; }
+  .form-group { margin-bottom: 15px; }
+  .form-group label { display: block; font-size: 0.85rem; margin-bottom: 6px; color: #475569; font-weight: 500; }
+  .form-group input, .form-group select { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }
+  
+  .panel-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+  .btn-primary { background: #1e5e3a; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+  .btn-danger { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+  .hidden { display: none !important; }
+
+  /* 📱 手機 RWD 排版 */
+  @media (max-width: 768px) {
+    .main-layout { flex-direction: column; }
+    .side-panel { width: 100%; position: static; margin-top: 15px; box-sizing: border-box; }
+    .top-bar { flex-direction: column; gap: 10px; align-items: flex-start; padding: 10px; }
+    .month-selector-container { width: 100%; justify-content: flex-start; }
+    
+    .schedule-table th, .schedule-table td { padding: 4px 1px; height: 65px; font-size: 0.75rem; }
+    .time-slot { width: 70px !important; }
+  }
+</style>
