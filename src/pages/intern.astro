@@ -1,19 +1,14 @@
 ---
-// src/pages/index.astro
 import { internData } from '../data/interns';
+import { createClient } from '@supabase/supabase-js';
 
-// 🚀 兼容 Cloudflare、Netlify 和本地環境的變數讀取方式
-const CORRECT_PASSWORD = 
-  import.meta.env.SITE_PASSWORD || 
-  process.env.SITE_PASSWORD || 
-  (Astro.locals.runtime?.env?.SITE_PASSWORD);
+// 初始化 Supabase 伺服器端連線（建議改用環境變數存放 Supabase URL 與 Service Role / Anon Key）
+const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 let authenticated = false;
 let loginError = false;
-
-if (!CORRECT_PASSWORD) {
-  console.error("⚠️ 警告：環境變數未偵測到 SITE_PASSWORD！");
-}
 
 if (Astro.cookies.has("auth_token")) {
   authenticated = true;
@@ -25,6 +20,20 @@ if (Astro.request.method === "POST") {
 
   if (action === "login") {
     const password = formData.get("password");
+
+    // 🚀 從 Supabase 的 site_settings 資料表撈取密碼
+    const { data: settingData, error } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'SITE_PASSWORD')
+      .single();
+
+    const CORRECT_PASSWORD = settingData ? settingData.value : null;
+
+    if (!CORRECT_PASSWORD) {
+      console.error("⚠️ 警告：Supabase 未偵測到 SITE_PASSWORD 設定！");
+    }
+
     if (CORRECT_PASSWORD && password === CORRECT_PASSWORD) {
       Astro.cookies.set("auth_token", "secure_logged_in_status", { path: "/", maxAge: 60 * 60 * 24 });
       authenticated = true;
