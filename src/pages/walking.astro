@@ -273,12 +273,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       left: 50%; /* 靠左對齊到卡片中央 */
       transform: translateX(-50%); /* 修正 X 軸確保水平完美置中 */
       
-      /* 畫出向下的三角形 */
+      /* 畫出向上的三角形 */
       width: 0;
       height: 0;
       border-left: 10px solid transparent;
       border-right: 10px solid transparent;
-      border-top: 12px solid #b0b8ae; /* 箭頭頂部顏色 = 箭頭顏色（淡綠灰） */
+      border--bottom: 12px solid #b0b8ae; /* 箭頭頂部顏色 = 箭頭顏色（淡綠灰） */
       
       margin-top: 14px; /* 與下一張卡片的微調間距 */
       z-index: 5;
@@ -358,23 +358,23 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <div class="flow-grid">
           
           <div class="topic-card">
-            <div class="topic-date">日期：22/2/2025 （六）</div>
-            <p class="topic-content">現今世代粗口使用之自由度</p>
-          </div>
-
-          <div class="topic-card">
-            <div class="topic-date">日期：19/3/2025 （三）</div>
-            <p class="topic-content">對方吸煙與否，有幾大程度是你建立關係的考量</p>
+            <div class="topic-date">日期：17/6/2025 （二）</div>
+            <p class="topic-content">你有幾大程度接受自己使用AI？</p>
           </div>
 
           <div class="topic-card">
             <div class="topic-date">日期：30/4/2025 （三）</div>
             <p class="topic-content">我們有多大程度可以決定自己的死亡？</p>
-          </div>
-
+          </div>          
+          
           <div class="topic-card">
-            <div class="topic-date">日期：17/6/2025 （二）</div>
-            <p class="topic-content">你有幾大程度接受自己使用AI？</p>
+            <div class="topic-date">日期：19/3/2025 （三）</div>
+            <p class="topic-content">對方吸煙與否，有幾大程度是你建立關係的考量</p>
+          </div>
+          
+          <div class="topic-card">
+            <div class="topic-date">日期：22/2/2025 （六）</div>
+            <p class="topic-content">現今世代粗口使用之自由度</p>
           </div>
 
           </div>
