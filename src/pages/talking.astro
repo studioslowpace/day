@@ -157,6 +157,152 @@ container.innerHTML = htmlString;
         }
 
         fetchTalksList();
+
+        
+    // ==========================================================================
+    // 【6. 新增與修改視窗控制】
+    // ==========================================================================
+    function openAddModalWithAutoOrder() {
+        let maxOrder = 0; 
+        if (talksData.length > 0) {
+            const orders = talksData.map(t => t.sort_order !== undefined && t.sort_order !== null ? t.sort_order : 0);
+            maxOrder = Math.max(...orders);
+        }
+        document.getElementById('new-sort').value = maxOrder + 1;
+        
+        // 重置新增彈窗內的欄位與預覽狀態
+        document.getElementById('new-title').value = '';
+        document.getElementById('new-desc').value = '';
+        document.getElementById('new-img-path').value = '';
+        const fileInput = document.getElementById('new-file'); // 假設您的 HTML 上傳 input ID 是這個
+        if (fileInput) fileInput.value = '';
+        selectedNewCompressedFile = null;
+        
+        const preview = document.getElementById('new-preview');
+        if (preview) preview.style.display = 'none';
+
+        toggleAddModal(true);
+    }
+
+    function toggleAddModal(show) {
+        const modal = document.getElementById('add-modal');
+        if (modal) {
+            if (show) modal.classList.add('show');
+            else modal.classList.remove('show');
+        }
+    }
+
+    function toggleEditModal(show) {
+        const modal = document.getElementById('edit-modal');
+        if (modal) {
+            if (show) modal.classList.add('show');
+            else modal.classList.remove('show');
+        }
+    }
+
+    function openEditModalFromServer(id) {
+        const talk = talksData.find(t => t.id === id);
+        if (!talk) return;
+
+        document.getElementById('edit-target-id').value = id;
+        document.getElementById('edit-title').value = talk.title;
+        document.getElementById('edit-sort').value = talk.sort_order !== undefined && talk.sort_order !== null ? talk.sort_order : 0;
+        document.getElementById('edit-desc').value = talk.description || '';
+        document.getElementById('edit-img-path').value = talk.image_url;
+        
+        const preview = document.getElementById('edit-preview');
+        if (preview) {
+            preview.src = talk.image_url;
+            preview.style.display = 'block';
+        }
+
+        const fileInput = document.getElementById('edit-file');
+        if (fileInput) fileInput.value = '';
+        selectedCompressedFile = null;
+
+        toggleEditModal(true);
+    }
+
+    async function createNewTalk() {
+        const title = document.getElementById('new-title').value.trim();
+        const desc = document.getElementById('new-desc').value.trim();
+        const sortVal = parseInt(document.getElementById('new-sort').value);
+        const pathInput = document.getElementById('new-img-path').value.trim();
+
+        if (isNaN(sortVal)) { alert('❌ 排序權重必須填入數字！'); return; }
+        if (!title) { alert('❌ 請輸入活動標題！'); return; }
+
+        let finalImageUrl = "";
+
+        // 🧠 核心邏輯調整：優先檢查是否有選擇實體檔案
+        if (selectedNewCompressedFile) {
+            const fileExt = selectedNewCompressedFile.name.split('.').pop() || 'jpg';
+            const fileName = `talk_new_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await window.client.storage
+                .from(window.STORAGE_BUCKET_NAME).upload(fileName, selectedNewCompressedFile, { cacheControl: '3600', upsert: true });
+
+            if (uploadError) { alert('相片上傳失敗：' + uploadError.message); return; }
+            const { data: { publicUrl } } = window.client.storage.from(window.STORAGE_BUCKET_NAME).getPublicUrl(fileName);
+            finalImageUrl = publicUrl;
+        } else {
+            // 如果沒選檔案，則直接抓取手動輸入的內容
+            if (!pathInput) { alert('❌ 請上傳相片或輸入相片路徑/GitHub 連結！'); return; }
+            finalImageUrl = pathInput;
+        }
+
+        const { error: insertError } = await window.client.from(window.TABLE_NAME).insert([
+            { title: title, description: desc, image_url: finalImageUrl, sort_order: sortVal }
+        ]);
+
+        if (!insertError) {
+            alert('🎉 全新談話活動資料已成功加入！');
+            toggleAddModal(false); 
+            fetchTalks();          
+        } else {
+            alert('❌ 寫入資料失敗：' + insertError.message);
+        }
+    }
+
+    async function saveChangesFromServer() {
+        const id = parseInt(document.getElementById('edit-target-id').value);
+        const newTitle = document.getElementById('edit-title').value.trim();
+        const newDesc = document.getElementById('edit-desc').value.trim();
+        const newSort = parseInt(document.getElementById('edit-sort').value);
+        const pathValue = document.getElementById('edit-img-path').value.trim();
+        
+        let finalImageUrl = talksData.find(t => t.id === id).image_url;
+
+        if (isNaN(newSort)) { alert('排序欄位必須填入數字！'); return; }
+        if (!newTitle) { alert('標題不能為空！'); return; }
+
+        // 🧠 核心邏輯調整：有選取新檔案就上傳，沒選就看手動輸入欄位是否有變更
+        if (selectedCompressedFile) {
+            const fileExt = selectedCompressedFile.name.split('.').pop() || 'jpg';
+            const fileName = `talk_${id}_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await window.client.storage
+                .from(window.STORAGE_BUCKET_NAME).upload(fileName, selectedCompressedFile, { cacheControl: '3600', upsert: true });
+
+            if (uploadError) { alert('相片上傳失敗: ' + uploadError.message); return; }
+            const { data: { publicUrl } } = window.client.storage.from(window.STORAGE_BUCKET_NAME).getPublicUrl(fileName);
+            finalImageUrl = publicUrl;
+        } else {
+            if (!pathValue) { alert('相片路徑不能為空！'); return; }
+            finalImageUrl = pathValue;
+        }
+
+        const { error } = await window.client
+            .from(window.TABLE_NAME)
+            .update({ title: newTitle, description: newDesc, image_url: finalImageUrl, sort_order: newSort })
+            .eq('id', id);
+
+        if (!error) {
+            alert('🎉 談話內容與排序已成功更新！');
+            toggleEditModal(false); 
+            fetchTalks(); 
+        } else {
+            alert('❌ 更新失敗：' + error.message);
+        }
+    }
     </script>
 
 <style is:global>
