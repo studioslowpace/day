@@ -19,7 +19,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             <h2>🌐 檢索新圖書</h2>
             <div class="search-box">
                 <input type="text" id="query" placeholder="請輸入書名、作者或 ISBN 條碼...">
-                <button class="search-btn" onclick="searchBooks()">開始檢索</button>
+                <button type="button" class="search-btn" id="searchBtn">開始檢索</button>
             </div>
             <div id="status">準備就緒，請在上方輸入關鍵字開始。</div>
             <div id="searchResults" class="book-list"></div>
@@ -28,9 +28,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
 
     <!-- 彈出詳細視窗 (Modal) -->
-    <div id="bookModal" class="modal" onclick="closeModal(event)">
+    <div id="bookModal" class="modal">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-btn" onclick="toggleModal(false)">&times;</span>
+            <span class="close-btn" id="closeModalBtn">&times;</span>
             <h2 style="margin-top:0; color:var(--text-dark); margin-bottom: 20px;">書籍詳細資料與修改</h2>
             
             <div style="display: flex; gap: 24px; flex-wrap: wrap;">
@@ -51,8 +51,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
             <!-- 底部功能控制列 -->
             <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; gap: 12px; align-items: center;">
-                <button onclick="copyAllDetails()" style="background-color: var(--bg-main); color: var(--text-dark); border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer;">📋 複製全部文字</button>
-                <button onclick="saveBookEdits()" style="background-color: var(--success); color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: auto;">💾 儲存修改項目</button>
+                <button id="copyAllBtn" style="background-color: var(--bg-main); color: var(--text-dark); border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer;">📋 複製全部文字</button>
+                <button id="saveEditsBtn" style="background-color: var(--success); color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: auto;">💾 儲存修改項目</button>
             </div>
         </div>
     </div>
@@ -65,14 +65,32 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         window.supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
         window.supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
         window.TABLE_NAME = 'my_library'; 
-        window.client = supabase.createClient(window.supabaseUrl, window.supabaseKey);
 
         let currentSearchResults = []; 
         let localLibraryData = [];
         let activeModalBook = null; 
 
-        document.addEventListener("DOMContentLoaded", loadLibrary);
-        document.getElementById('query').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBooks(); });
+        document.addEventListener("DOMContentLoaded", () => {
+            if (window.supabase) {
+                window.client = window.supabase.createClient(window.supabaseUrl, window.supabaseKey);
+            }
+
+            const searchBtn = document.getElementById('searchBtn');
+            const queryInput = document.getElementById('query');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const bookModal = document.getElementById('bookModal');
+            const copyAllBtn = document.getElementById('copyAllBtn');
+            const saveEditsBtn = document.getElementById('saveEditsBtn');
+
+            if (searchBtn) searchBtn.addEventListener('click', searchBooks);
+            if (queryInput) queryInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBooks(); });
+            if (closeModalBtn) closeModalBtn.addEventListener('click', () => toggleModal(false));
+            if (bookModal) bookModal.addEventListener('click', (e) => { if(e.target.id === 'bookModal') toggleModal(false); });
+            if (copyAllBtn) copyAllBtn.addEventListener('click', copyAllDetails);
+            if (saveEditsBtn) saveEditsBtn.addEventListener('click', saveBookEdits);
+
+            loadLibrary();
+        });
 
         async function searchBooks() {
             const query = document.getElementById('query').value.trim();
@@ -98,6 +116,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
                 statusDiv.innerText = `✅ 成功找到 ${items.length} 筆最符合的圖書結果：`;
 
+                let htmlContent = '';
                 items.forEach((item, index) => {
                     const info = item.volumeInfo || {};
                     const title = info.title || '未知書名';
@@ -127,7 +146,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                     };
                     currentSearchResults.push(bookObj);
 
-                    const cardHTML = `
+                    htmlContent += `
                         <div class="book-card">
                             <img class="book-cover" src="${imgUrl}" alt="${title}">
                             <div class="book-info">
@@ -142,16 +161,21 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                             </div>
                         </div>
                     `;
-                    resultsDiv.innerHTML += cardHTML;
                 });
+
+                resultsDiv.innerHTML = htmlContent;
             } catch (error) {
-                console.error(error);
+                console.error("搜尋發生錯誤:", error);
                 statusDiv.innerText = '💥 連線異常，請檢查網路或 API 金鑰是否有效。';
             }
         }
 
         async function addToLibrary(index) {
             const bookToAdd = currentSearchResults[index];
+            if (!window.client) {
+                alert('💥 Supabase 連線尚未就緒');
+                return;
+            }
             try {
                 const { data: existingBooks, error: searchError } = await window.client
                     .from(window.TABLE_NAME).select('id').eq('isbn', bookToAdd.isbn).eq('title', bookToAdd.title);
@@ -179,7 +203,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             const countSpan = document.getElementById('libraryCount');
             
             if (!window.client) {
-                libraryListDiv.innerHTML = '<p style="color:red; text-align:center;">Supabase 未初始化連線 (window.client)</p>';
+                libraryListDiv.innerHTML = '<p style="color:red; text-align:center; grid-column: 1/-1;">Supabase 未初始化連線 (window.client)</p>';
                 return;
             }
 
@@ -191,15 +215,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
                 localLibraryData = myLibrary || [];
                 countSpan.innerText = localLibraryData.length;
-                libraryListDiv.innerHTML = '';
-
+                
                 if (localLibraryData.length === 0) {
-                    libraryListDiv.innerHTML = '<p style="color:#86868b; text-align:center; grid-column: 1/-1; margin-top:20px;">目前空空如也, 快從右側搜尋書籍加入吧！</p>';
+                    libraryListDiv.innerHTML = '<p style="color:#86868b; text-align:center; grid-column: 1/-1; margin-top:20px;">目前空空如也，快從右側搜尋書籍加入吧！</p>';
                     return;
                 }
 
+                let htmlContent = '';
                 localLibraryData.forEach((book, idx) => {
-                    const itemHTML = `
+                    htmlContent += `
                         <div class="library-card" onclick="openDetailsView(${idx})">
                             <img src="${book.img_url}" alt="${book.title}">
                             <div class="library-card-info">
@@ -209,8 +233,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
                             <button class="del-btn" onclick="event.stopPropagation(); deleteFromLibrary(${idx})">刪除</button>
                         </div>
                     `;
-                    libraryListDiv.innerHTML += itemHTML;
                 });
+                libraryListDiv.innerHTML = htmlContent;
             } catch (error) {
                 console.error(error);
                 libraryListDiv.innerHTML = '<p style="color:red; text-align:center; grid-column: 1/-1;">無法從 Supabase 載入藏書庫。</p>';
@@ -381,9 +405,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         function toggleModal(show) {
             document.getElementById('bookModal').style.display = show ? 'flex' : 'none';
         }
-        function closeModal(e) {
-            if(e.target.id === 'bookModal') toggleModal(false);
-        }
     </script>
 
     <style>
@@ -486,6 +507,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             display: flex;
             flex-direction: column;
             gap: 16px;
+            min-height: 100px;
         }
 
         .book-card {
@@ -535,6 +557,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 14px;
+            min-height: 100px;
         }
 
         @media (max-width: 1100px) {
