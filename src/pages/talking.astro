@@ -121,7 +121,7 @@ export const prerender = false;
         // 🛠️ 定義全域常數與變數，供函數呼叫
         window.client = client;
         window.TABLE_NAME = 'talks';
-        window.STORAGE_BUCKET_NAME = 'talks-images'; // 請確保你在 Supabase 建立了一個名叫 talks-images 的 Public Storage Bucket，或是改為你實際的 Bucket 名稱
+        window.STORAGE_BUCKET_NAME = 'talks'; // 請確保你在 Supabase 建立了一個名叫 talks-images 的 Public Storage Bucket，或是改為你實際的 Bucket 名稱
         
         let talksData = [];
         let selectedNewCompressedFile = null;
@@ -275,7 +275,7 @@ function handleEditImageUpload(event) {
                 const { error: uploadError } = await window.client.storage
                     .from(window.STORAGE_BUCKET_NAME).upload(fileName, selectedNewCompressedFile, { cacheControl: '3600', upsert: true });
 
-                if (uploadError) { alert('相片上傳失敗：' + uploadError.message + '\n(請確認 Supabase 是否已建立名為 talks-images 的 Public Bucket)'); return; }
+                if (uploadError) { alert('相片上傳失敗：' + uploadError.message + '\n(請確認 Supabase 是否已建立名為 talks 的 Public Bucket)'); return; }
                 const { data: { publicUrl } } = window.client.storage.from(window.STORAGE_BUCKET_NAME).getPublicUrl(fileName);
                 finalImageUrl = publicUrl;
             } else {
