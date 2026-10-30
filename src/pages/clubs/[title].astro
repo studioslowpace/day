@@ -47,15 +47,18 @@ const formattedContent = club.content ? club.content.replace(/\n/g, '<br>') : ''
 
   <main class="main-container">
     <div class="detail-view-container" id="detailViewArea" style="display: block;">
-      <div class="detail-nav-bar">
-        <a href="/reading" class="view-close-btn" style="text-decoration: none;">← 返回列表</a>
-        <div class="page-switch-group">
-          <button class="nav-btn" id="prevClubBtn">上一篇</button>
-          <button class="nav-btn" id="nextClubBtn">下一篇</button>
-        </div>
-      </div>
+      
+      
+                  <!-- 頂部標題置中，帶有左右切換按鈕 -->
+            <div class="talk-header-wrap">
+                <button class="nav-btn" id="prevClubBtn">上一篇</button>
 
-      <h2 class="detail-centered-title">{club.title || '未命名'}</h2>
+                <h2 class="detail-centered-title">{club.title || '未命名'}</h2>
+
+                <button class="nav-btn" id="nextClubBtn">下一篇</button>
+            </div>
+
+      
       <hr class="detail-centered-hr">
 
       <div class="detail-layout">
