@@ -53,28 +53,33 @@ export const prerender = false;
                 return;
             }
 
-            let htmlString = "";
-            talks.forEach((talk, index) => {
-                htmlString += `
-                    <div style="display: flex; gap: 40px; align-items: flex-start; background: #fff; padding: 25px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                        <div style="flex: 1; min-width: 280px;">
-                            <a href="/talking/${encodeURIComponent(talk.title)}">
-                                <img src="${talk.image_url}" alt="${talk.title}" style="width: 100%; border-radius: 8px; object-fit: cover;" oncontextmenu="return false;" ondragstart="return false;">
-                            </a>
-                        </div>
-                        <div style="flex: 1.5;">
-                            <h2 style="margin-top: 0;">
-                                <a href="/talking/${encodeURIComponent(talk.title)}" style="text-decoration: none; color: #2c3e2f;">${talk.title}</a>
-                            </h2>
-                            <p style="color: #444; line-height: 1.8; font-size: 14px;">
-                                ${talk.description ? talk.description.substring(0, 150) + '...' : ''}
-                            </p>
-                            <a href="/talking/${encodeURIComponent(talk.title)}" class="btn" style="display:inline-block; margin-top:15px; background:#404040; color:#fff; padding:8px 20px; text-decoration:none; border-radius:4px; font-size:14px;">閱讀完整談話 &rarr;</a>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = htmlString;
+let htmlString = "";
+talks.forEach((talk, index) => {
+    const talkUrl = `/talking/${encodeURIComponent(talk.title)}`;
+    htmlString += `
+        <a href="${talkUrl}" style="display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-decoration: none; color: inherit; cursor: pointer; height: 100%;">
+            <!-- 1. 標題置於最上方 -->
+            <h2 style="margin-top: 0; margin-bottom: 15px; color: #2c3e2f; font-size: 18px; line-height: 1.4;">
+                ${talk.title}
+            </h2>
+
+            <!-- 2. 相片置於中間 -->
+            <div style="width: 100%; margin-bottom: 15px;">
+                <img src="${talk.image_url}" alt="${talk.title}" style="width: 100%; height: 180px; border-radius: 8px; object-fit: cover;" oncontextmenu="return false;" ondragstart="return false;">
+            </div>
+
+            <!-- 3. 內容置於下方，限制只顯示 3 行 -->
+            <div style="flex-grow: 1;">
+                <p style="color: #444; line-height: 1.6; font-size: 14px; margin: 0; 
+                          display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
+                    ${talk.description || ''}
+                </p>
+            </div>
+        </a>
+    `;
+});
+container.innerHTML = htmlString;
+
 
             // 檢查管理員身分
             const { data: { session } } = await client.auth.getSession();
@@ -87,10 +92,10 @@ export const prerender = false;
         fetchTalksList();
     </script>
 
-        <style>
+<style>
         /* ==========================================================================
-           【1. 全域與基礎排版樣式】
-           ========================================================================== */
+            【1. 全域與基礎排版樣式】
+            ========================================================================== */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -145,21 +150,32 @@ export const prerender = false;
             margin: 0 auto;
         }
 
+        /* 擴寬容器以容納 3 欄卡片排版 */
         .wixui-section {
             padding: 40px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             width: 100%;
             box-sizing: border-box;
         }
 
+        /* ==========================================================================
+            【新增：3 欄卡片格線與手機單欄設定】
+            ========================================================================== */
+        #events-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 預設桌面版橫向 3 個卡片 */
+            gap: 30px;
+            width: 100%;
+        }
+
 
         /* ==========================================================================
-           【2. SVG 特效標題】
-           ========================================================================== */
+            【2. SVG 特效標題】
+            ========================================================================== */
         .title-container {
             display: flex;
             justify-content: center;
@@ -182,8 +198,8 @@ export const prerender = false;
 
         
         /* ==========================================================================
-           【3. 彈出視窗 (Modal) 共同樣式】
-           ========================================================================== */
+            【3. 彈出視窗 (Modal) 共同樣式】
+            ========================================================================== */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -218,8 +234,8 @@ export const prerender = false;
         .modal-overlay.show .modal-box { transform: translateY(0); }
 
         /* ==========================================================================
-           【4. 表單與活動排版】
-           ========================================================================== */
+            【4. 表單與活動排版】
+            ========================================================================== */
         .editing-input { width: 100%; font-size: 15px; padding: 8px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
         .editing-textarea { width: 100%; height: 120px; font-size: 14px; line-height: 1.6; padding: 8px; margin-bottom: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
         .upload-preview { display: block; max-width: 140px; margin: 10px 0; border: 1px dashed #ccc; padding: 4px; border-radius: 4px; }
@@ -250,12 +266,16 @@ export const prerender = false;
         .order-badge { display: inline-block; background: #777777; color: white; font-size: 11px; padding: 1px 5px; border-radius: 3px; margin-left: 8px; font-weight: bold; vertical-align: middle; }
         .edit-badge { display: inline-block; background: #ff9800; color: white; font-size: 12px; padding: 2px 6px; border-radius: 3px; margin-left: 8px; cursor: pointer; vertical-align: middle; }
 
+        /* 響應式設定：手機模式時橫向只排 1 個卡片 */
         @media (max-width: 768px) {
             .title-container { flex-wrap: wrap; gap: 20px; justify-content: center; }
             .vector-letter svg { width: 30px; height: 30px; }
             .vector-letter p { font-size: 10px; margin: 20px 0 0px 8px;}   
-            .event-block { flex-direction: column; align-items: center; text-align: center; }
-            .event-image img { width: 100%; max-width: 350px; }
+            
+            /* 手機模式強制改為單欄排版（每行 1 個卡片） */
+            #events-container {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </BaseLayout>
