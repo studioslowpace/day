@@ -1,0 +1,538 @@
+---
+// src/pages/index.astro
+import { internData } from '../data/interns';
+
+// 🚀 兼容 Cloudflare、Netlify 和本地環境的變數讀取方式
+const CORRECT_PASSWORD = 
+  import.meta.env.SITE_PASSWORD || 
+  process.env.SITE_PASSWORD || 
+  (Astro.locals.runtime?.env?.SITE_PASSWORD);
+
+let authenticated = false;
+let loginError = false;
+
+if (!CORRECT_PASSWORD) {
+  console.error("⚠️ 警告：環境變數未偵測到 SITE_PASSWORD！");
+}
+
+if (Astro.cookies.has("auth_token")) {
+  authenticated = true;
+}
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const action = formData.get("action");
+
+  if (action === "login") {
+    const password = formData.get("password");
+    if (CORRECT_PASSWORD && password === CORRECT_PASSWORD) {
+      Astro.cookies.set("auth_token", "secure_logged_in_status", { path: "/", maxAge: 60 * 60 * 24 });
+      authenticated = true;
+      loginError = false;
+    } else {
+      Astro.cookies.delete("auth_token", { path: "/" });
+      authenticated = false;
+      loginError = true;
+    }
+  } else if (action === "logout") {
+    Astro.cookies.delete("auth_token", { path: "/" });
+    authenticated = false;
+  }
+}
+---
+
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>客舍實習生 - 活動時間表</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+      :root {
+        --bg-cream: #fbf9f4;       
+        --text-main: #3d4035;      
+        --text-muted: #8a8e7b;    
+        --sage-green: #6b7a67;    
+        --sage-light: #f3f5f0;    
+        --clay-orange: #c88a75;   
+        --border-color: #e6e3da;  
+        --grid-border: #dfdbd3;   /* 溫柔的暖灰線條 */
+        --holiday-red: #cc6666;   /* 低飽和度的文青紅 */
+        --font-serif: "Noto Serif TC", "Georgia", serif;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      
+      body { 
+        background-color: var(--bg-cream); 
+        color: var(--text-main); 
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+        padding: 60px 20px;
+        letter-spacing: 0.03em;
+        line-height: 1.6;
+      }
+      
+      /* 登入區塊 */
+      .login-container { 
+        max-width: 400px; 
+        margin: 120px auto; 
+        background: white; 
+        padding: 50px 40px; 
+        border-radius: 16px; 
+        box-shadow: 0 10px 30px rgba(61,64,53,0.03); 
+        border: 1px solid var(--border-color); 
+        text-align: center; 
+      }
+      .login-container h2 { 
+        font-family: var(--font-serif); 
+        margin-bottom: 25px; 
+        font-size: 1.4rem; 
+        font-weight: 500; 
+        color: var(--text-main);
+      }
+      .login-container input { 
+        width: 100%; 
+        padding: 14px; 
+        margin-bottom: 20px; 
+        border: 1px solid var(--border-color); 
+        border-radius: 8px; 
+        background: var(--bg-cream); 
+        outline: none; 
+        text-align: center; 
+        font-size: 1rem; 
+        color: var(--text-main); 
+        transition: all 0.3s;
+      }
+      .login-container input:focus {
+        border-color: var(--sage-green);
+        background: white;
+      }
+      .login-container button { 
+        width: 100%; 
+        padding: 14px; 
+        background: var(--sage-green); 
+        color: white; 
+        border: none; 
+        border-radius: 8px; 
+        font-size: 1rem; 
+        cursor: pointer; 
+        letter-spacing: 4px; 
+        text-indent: 4px; /* 修正因字距產生的置中微調 */
+        transition: opacity 0.2s;
+      }
+      .login-container button:hover { opacity: 0.9; }
+      
+      /* 頁首標題 */
+      header { text-align: center; margin-bottom: 50px; position: relative; }
+      header h1 { font-family: var(--font-serif); font-size: 2.4rem; font-weight: 500; letter-spacing: 4px; margin-bottom: 12px; color: var(--text-main); }
+      header p { color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; }
+      
+      .btn-logout { 
+        position: absolute; 
+        right: 10px; 
+        top: 10px; 
+        background: transparent; 
+        border: 1px solid var(--clay-orange); 
+        color: var(--clay-orange); 
+        padding: 6px 16px; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        font-size: 0.82rem; 
+        letter-spacing: 1px;
+        transition: all 0.2s; 
+      }
+      .btn-logout:hover { background: #fff6f3; }
+
+      .main-container { max-width: 1400px; margin: 0 auto; }
+
+      /* 月份切換 */
+      .month-switcher-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 40px;
+        margin-bottom: 40px;
+      }
+      .current-month-display {
+        font-family: var(--font-serif);
+        font-size: 2.2rem;
+        font-weight: 500;
+        min-width: 260px;
+        text-align: center;
+        letter-spacing: 2px;
+      }
+      .switch-btn {
+        background: white;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        font-size: 1.2rem;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+      .switch-btn:hover { background: white; color: var(--sage-green); border-color: var(--sage-green); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+
+      /* 月曆大外框 */
+      .calendar-section { 
+        background: white; 
+        padding: 40px; 
+        border-radius: 20px; 
+        border: 1px solid var(--border-color); 
+        box-shadow: 0 10px 40px rgba(61,64,53,0.015); 
+      }
+
+      /* 月曆 Grid 佈局 */
+      .calendar-grid { 
+        display: grid; 
+        grid-template-columns: repeat(7, 1fr); 
+        background-color: white; 
+      }
+      
+      /* 星期標頭 */
+      .calendar-header { 
+        font-size: 0.88rem; 
+        color: var(--text-muted); 
+        text-align: center; 
+        padding: 18px 0; 
+        font-weight: 500; 
+        letter-spacing: 2px;
+        border-bottom: 2px solid var(--grid-border);
+      }
+      
+      /* 日期區域 */
+      #calendar-days {
+        grid-auto-rows: minmax(160px, auto); /* 固定最小行高，活動多時自動撐高 */
+        border-left: 1px solid var(--grid-border);
+        border-bottom: 1px solid var(--grid-border);
+      }
+      
+      /* 每個日子的格子 */
+      .calendar-day {
+        background: white;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-right: 1px solid var(--grid-border);
+        border-top: 1px solid var(--grid-border);
+        transition: background-color 0.2s ease;
+        cursor: pointer;
+      }
+      .calendar-day:hover { background: #faf9f5; }
+      
+      /* 空白留白感 */
+      .calendar-day.empty { 
+        background: #fdfcfe; 
+        opacity: 0.4; 
+        cursor: default;
+      }
+      
+      /* 日期數字 */
+      .day-number { 
+        font-family: var(--font-serif);
+        font-size: 1.25rem; 
+        font-weight: 500; 
+        color: var(--text-muted); 
+        margin-bottom: 4px; 
+        line-height: 1;
+        text-align: left;
+      }
+      
+      .calendar-day.is-holiday { background-color: #fffbfb; }
+      .calendar-day.is-holiday .day-number { color: var(--holiday-red); }
+
+      /* 活動項目精緻化 */
+      .activity-item {
+        padding: 8px 10px;
+        border-radius: 6px;
+        border-left: 3px solid var(--sage-green); 
+        background-color: var(--sage-light);     
+        text-align: left;
+        box-shadow: 0 1px 3px rgba(61,64,53,0.04);
+        transition: transform 0.15s ease;
+      }
+      .activity-item:hover {
+        transform: translateY(-1px);
+      }
+      
+      /* 🎯 移除原本動態覆蓋的色彩，強制時間字變回手帳主體黑色 */
+      .act-time { 
+        font-size: 0.72rem; 
+        font-weight: 600; 
+        display: block; 
+        margin-bottom: 3px; 
+        letter-spacing: 0.5px;
+        color: var(--text-main) !important;
+        opacity: 0.9;
+      }
+      .act-title { 
+        font-size: 0.8rem; 
+        font-weight: 500; 
+        word-break: break-all; 
+        line-height: 1.35;
+        color: var(--text-main) !important; /* 🎯 確保活動名稱為黑色 */
+      }
+
+      .loading-status { text-align: center; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; font-style: italic; letter-spacing: 1px; }
+
+      /* 響應式微調 */
+      @media (max-width: 1024px) {
+        #calendar-days { grid-auto-rows: minmax(130px, auto); }
+      }
+
+      @media (max-width: 768px) {
+        body { padding: 30px 10px; }
+        header h1 { font-size: 1.8rem; }
+        .btn-logout { position: static; display: block; margin: 15px auto 0; }
+        .calendar-section { padding: 15px; border-radius: 12px; }
+        #calendar-days { grid-auto-rows: minmax(100px, auto); }
+        .calendar-day { padding: 8px; gap: 4px; }
+        .day-number { font-size: 1rem; }
+        .act-title { font-size: 0.75rem; }
+        .activity-item { padding: 4px 6px; border-radius: 4px; }
+      }
+
+      /* 🎯 新增：頁首功能導覽列 */
+      .header-nav {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 25px;
+        flex-wrap: wrap;
+      }
+      .nav-link {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: white;
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        text-decoration: none;
+        border-radius: 8px;
+        font-size: 0.92rem;
+        font-weight: 500;
+        letter-spacing: 1px;
+        transition: all 0.25s ease;
+        box-shadow: 0 4px 10px rgba(61,64,53,0.01);
+      }
+      .nav-link:hover {
+        color: var(--sage-green);
+        border-color: var(--sage-green);
+        background-color: var(--sage-light);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 15px rgba(107,122,103,0.08);
+      }
+
+      /* 調整原本 RWD 響應式，讓手機版也好看 */
+      @media (max-width: 768px) {
+        .header-nav { gap: 10px; margin-top: 20px; }
+        .nav-link { padding: 8px 14px; font-size: 0.85rem; width: 100%; text-align: center; }
+      }
+    </style>
+  </head>
+  
+  <body>
+    { !authenticated ? (
+      <div class="login-container">
+        <h2>登入實習生活動時間表</h2>
+        <form method="POST">
+          <input type="hidden" name="action" value="login" />
+          <input type="password" name="password" placeholder="請輸入密碼" required />
+          <button type="submit">確認進入</button>
+        </form>
+        {loginError && <p style="color: var(--holiday-red); margin-top: 15px; font-size: 0.9rem;">❌ 密碼錯誤，請再試一次。</p>}
+      </div>
+    ) : (
+      <div>
+        <header>
+        <!-- 🎯 新增：功能連結區域 -->
+          <nav class="header-nav">
+            <a href="https://studioslowpace.com/dutyschedule/" target="_blank" rel="noopener noreferrer" class="nav-link">
+              📅 客舍/客棧的時間編排
+            </a>
+            <a href="/internpost" target="_blank" rel="noopener noreferrer" class="nav-link">
+              ✍️ 上載實習生的觀察 Post
+            </a>
+            <a href="/hostelactivity" target="_blank" rel="noopener noreferrer" class="nav-link">
+              🏠 共享客廳每週當值與小活動
+            </a>
+          </nav>
+          <h1>客舍實習生 - 活動時間表</h1>
+          <p>☁️ 點擊日子可查看當日活動詳情</p>
+          <form method="POST">
+            <input type="hidden" name="action" value="logout" />
+            <button type="submit" class="btn-logout">登出系統</button>
+          </form>
+        </header>
+
+        <div class="main-container">
+          <div class="month-switcher-header">
+            <button id="btn-prev-month" class="switch-btn">‹</button>
+            <h2 id="calendar-title" class="current-month-display">載入中...</h2>
+            <button id="btn-next-month" class="switch-btn">›</button>
+          </div>
+
+          <section class="calendar-section">
+            <div id="loading-text" class="loading-status">正在連線至 Supabase 雲端...</div>
+            
+            <div class="calendar-grid">
+              <div class="calendar-header">日</div>
+              <div class="calendar-header">一</div>
+              <div class="calendar-header">二</div>
+              <div class="calendar-header">三</div>
+              <div class="calendar-header">四</div>
+              <div class="calendar-header">五</div>
+              <div class="calendar-header">六</div>
+            </div>
+
+            <div id="calendar-days" class="calendar-grid"></div>
+          </section>
+        </div>
+      </div>
+    )}
+
+    <script is:inline>
+      const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+      const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+      const TABLE_NAME = 'activities'; 
+
+      const holidays = ["2026-01-01", "2026-02-17", "2026-02-18", "2026-02-19", "2026-04-03", "2026-04-04", "2026-04-06", "2026-04-07", "2026-05-01", "2026-05-25", "2026-06-19", "2026-07-01", "2026-09-26", "2026-10-01", "2026-10-19", "2026-12-25", "2026-12-26"];
+
+      let currentYear = 2026;
+      let currentMonthNum = 8; 
+
+      let rawActivities = []; 
+      let client;
+
+      function getElements() {
+        return {
+          calendarDays: document.getElementById('calendar-days'),
+          calendarTitle: document.getElementById('calendar-title'),
+          loadingText: document.getElementById('loading-text'),
+          btnPrev: document.getElementById('btn-prev-month'),
+          btnNext: document.getElementById('btn-next-month')
+        };
+      }
+
+      function initSupabase() {
+        if (window.supabase && !client) {
+          client = window.supabase.createClient(supabaseUrl, supabaseKey);
+        }
+        return !!client;
+      }
+
+      async function fetchData() {
+        const els = getElements();
+        if (!els.calendarDays) return; 
+        if (!initSupabase()) {
+          setTimeout(fetchData, 100);
+          return;
+        }
+        
+        if (els.loadingText) els.loadingText.style.display = 'block';
+        try {
+          const { data, error } = await client.from(TABLE_NAME).select('*');
+          if (!error && data) {
+            rawActivities = data;
+            if (els.loadingText) els.loadingText.style.display = 'none';
+            renderCalendar();
+          }
+        } catch (e) { console.error(e); }
+      }
+
+      function renderCalendar() {
+        const els = getElements();
+        if (!els.calendarDays) return;
+        
+        els.calendarDays.innerHTML = '';
+        if (els.calendarTitle) {
+          els.calendarTitle.innerText = `${currentYear} 年 ${currentMonthNum} 月`;
+        }
+
+        const startWeekDay = new Date(currentYear, currentMonthNum - 1, 1).getDay();
+        const totalDays = new Date(currentYear, currentMonthNum, 0).getDate();
+
+        for (let i = 0; i < startWeekDay; i++) {
+          const emptyCell = document.createElement('div');
+          emptyCell.className = 'calendar-day empty';
+          els.calendarDays.appendChild(emptyCell);
+        }
+
+        for (let day = 1; day <= totalDays; day++) {
+          const dateStr = `${currentYear}-${String(currentMonthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const isHoliday = holidays.includes(dateStr);
+
+          const dayCell = document.createElement('div');
+          dayCell.className = `calendar-day ${isHoliday ? 'is-holiday' : ''}`;
+          
+          dayCell.addEventListener('click', () => {
+            window.location.href = `/day/${dateStr}`;
+          });
+
+          const numLabel = document.createElement('div');
+          numLabel.className = 'day-number';
+          numLabel.innerText = `${day}`;
+          dayCell.appendChild(numLabel);
+
+          const dayActs = rawActivities.filter(act => act.date === dateStr);
+          dayActs.sort((a, b) => (a.time_start || '').localeCompare(b.time_start || ''));
+          
+          dayActs.forEach(act => {
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+    
+            const baseColor = act.color_hex || '#6b7a67'; 
+    
+            item.style.borderColor = baseColor;
+            item.style.backgroundColor = `${baseColor}12`; 
+            // 🎯 移除 item.style.color = baseColor，讓文字保持 CSS 設定的黑色
+
+            // 🎯 修改此處：拼合時間字串為「開始時間 ~ 結束時間」的完整格式
+            const displayTime = (act.time_start && act.time_end) 
+              ? `${act.time_start} ~ ${act.time_end}` 
+              : (act.time_start || '');
+
+            item.innerHTML = `
+              <span class="act-time">${displayTime}</span>
+              <div class="act-title">${act.name || '未命名活動'}</div>
+            `;
+            dayCell.appendChild(item);
+          });
+
+          els.calendarDays.appendChild(dayCell);
+        }
+      }
+
+      function init() {
+        const els = getElements();
+        if (els.btnPrev && els.btnNext) {
+          els.btnPrev.addEventListener('click', () => {
+            currentMonthNum--;
+            if (currentMonthNum < 1) { currentMonthNum = 12; currentYear--; }
+            renderCalendar();
+          });
+          els.btnNext.addEventListener('click', () => {
+            currentMonthNum++;
+            if (currentMonthNum > 12) { currentMonthNum = 1; currentYear++; }
+            renderCalendar();
+          });
+        }
+        fetchData();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    </script>
+  </body>
+</html>
