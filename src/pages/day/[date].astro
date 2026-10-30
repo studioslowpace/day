@@ -1,0 +1,877 @@
+---
+// src/pages/day/[date].astro
+const { date } = Astro.params;
+
+if (!Astro.cookies.has("auth_token")) {
+  return Astro.redirect('/');
+}
+---
+
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{date} 活動詳情與管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style is:global>
+      :root {
+        --bg-cream: #fbf9f4;       
+        --text-main: #3d4035;      
+        --text-muted: #8a8e7b;    
+        --sage-green: #6b7a67;    
+        --sage-light: #f3f5f0;    
+        --clay-orange: #c88a75;   
+        --border-color: #e6e3da;  
+        --font-serif: "Noto Serif TC", "Georgia", serif;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      
+      body { 
+        background-color: var(--bg-cream); 
+        color: var(--text-main); 
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; 
+        padding: 60px 20px; 
+        letter-spacing: 0.02em;
+        line-height: 1.6;
+      }
+      
+      .container { max-width: 600px; margin: 0 auto; }
+      
+      .action-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 25px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 15px;
+      }
+      .back-link { 
+        display: inline-block; 
+        color: var(--text-muted); 
+        text-decoration: none; 
+        font-size: 0.95rem; 
+        margin-bottom: 8px;
+        transition: color 0.2s;
+      }
+      .back-link:hover { color: var(--sage-green); }
+      
+      h1 { font-family: var(--font-serif); font-size: 2.4rem; font-weight: 500; color: var(--text-main); }
+      
+      .btn-add-trigger {
+        background: var(--sage-green);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 12px rgba(107,122,103,0.15);
+        transition: transform 0.2s, opacity 0.2s;
+      }
+      .btn-add-trigger:hover { transform: translateY(-1px); opacity: 0.95; }
+
+      .date-switcher-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        padding: 10px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 30px;
+      }
+      .btn-date-nav {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+
+      /* 文青手帳卡牌設計 */
+      .detail-card { 
+        border: 2px solid var(--card-border-color, #6b7a67) !important; 
+        background: var(--card-bg-color, #f3f5f0) !important; 
+        padding: 35px 30px; 
+        border-radius: 24px; 
+        margin-bottom: 28px; 
+        position: relative; 
+        box-shadow: 0 8px 30px rgba(61,64,53,0.02); 
+      }
+      
+      .detail-card h3 { 
+        font-family: var(--font-serif); 
+        font-size: 1.8rem; 
+        margin-bottom: 25px; 
+        padding-right: 60px; 
+        color: var(--text-main) !important; 
+      }
+      
+      .meta-grid { 
+        display: flex;
+        flex-direction: column;
+        gap: 12px; 
+        margin-bottom: 20px;
+      }
+      
+      .meta-item { 
+        font-size: 1.05rem; 
+        color: var(--text-main) !important; 
+        background: var(--meta-bg-color, #eaece6) !important;
+        padding: 12px 18px;
+        border-radius: 12px;
+      }
+      
+      .desc-text { 
+        font-size: 1.05rem; 
+        background: rgba(255, 255, 255, 0.7); 
+        padding: 20px; 
+        border-radius: 12px; 
+        margin-top: 20px; 
+        white-space: pre-wrap; 
+        border: 1px dashed var(--card-border-color, #6b7a67);
+      }
+
+      /* 🆕 實習生加碼報名區塊樣式 */
+      .signup-block {
+        margin-top: 15px;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+      }
+      .signup-title {
+        font-size: 0.95rem;
+        font-weight: bold;
+        color: var(--sage-green);
+        margin-bottom: 8px;
+      }
+      .signup-form-mini {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .signup-form-mini input {
+        flex: 1;
+        padding: 6px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.9rem;
+      }
+      .btn-signup-submit {
+        background: var(--sage-green);
+        color: white;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+      .btn-signup-submit:disabled {
+        background: var(--text-muted);
+        cursor: not-allowed;
+      }
+      .signup-full-msg {
+        color: var(--clay-orange);
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-top: 5px;
+      }
+
+      /* IG 大圖顯示區 */
+      .ig-section {
+        margin-top: 20px;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 20px;
+      }
+      .ig-title { font-size: 0.95rem; font-weight: bold; color: #d62976; margin-bottom: 15px; }
+      
+      .ig-gallery {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin-bottom: 15px;
+      }
+      .ig-item-wrapper {
+        position: relative;
+        width: 100%;
+        max-width: 400px; 
+        margin: 0 auto;
+      }
+      .ig-gallery img {
+        width: 100%;
+        aspect-ratio: 4 / 5; 
+        object-fit: cover;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        display: block;
+        pointer-events: auto !important; 
+        -webkit-user-select: auto !important;
+        user-select: auto !important;
+      }
+      
+      .btn-download-img {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+      .btn-download-img:hover { background: rgba(0, 0, 0, 0.9); }
+
+      /* 可複製的內文區塊 */
+      .caption-container {
+        position: relative;
+        margin-top: 15px;
+      }
+      .ig-caption-box {
+        background: #fafafa;
+        padding: 16px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        white-space: pre-wrap;
+        border-left: 3px solid #d62976;
+        color: #333;
+        -webkit-user-select: text !important;
+        user-select: text !important;
+      }
+      .btn-copy-caption {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: var(--sage-light);
+        border: 1px solid var(--border-color);
+        color: var(--sage-green);
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .btn-copy-caption:hover { background: var(--border-color); }
+
+      .btn-edit-icon-trigger { 
+        position: absolute; right: 30px; top: 30px; background: white; border: 2px solid var(--card-border-color, #6b7a67); 
+        color: var(--text-color, #6b7a67); width: 46px; height: 46px; border-radius: 50%; font-size: 1.2rem; 
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+      }
+
+      .btn-approve-lock {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 20px;
+        padding: 8px 16px;
+        background: #fff;
+        border: 1px solid #6b7a67;
+        color: #6b7a67;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+      .btn-approve-lock.is-approved { background: #e8f5e9; border-color: #2e7d32; color: #2e7d32; }
+
+      .loading-status { text-align: center; color: var(--text-muted); padding: 40px; }
+      .no-data { text-align: center; color: var(--text-muted); padding: 50px; background: white; border-radius: 16px; }
+
+      /* 表單 Modal 與預覽圖刪除樣式 */
+      .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(61, 64, 53, 0.4);
+        backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+      }
+      .modal-overlay.is-active { opacity: 1; pointer-events: auto; }
+      .modal-box { background: white; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 35px; border-radius: 20px; position: relative; }
+      .btn-close-modal { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 1.6rem; cursor: pointer; }
+      
+      form label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; margin-top: 14px; }
+      form input, form select, form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); background: var(--bg-cream); border-radius: 8px; }
+      
+      .form-gallery-preview { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+      .preview-image-container { position: relative; width: 75px; height: 75px; }
+      .form-gallery-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
+      
+      .btn-remove-preview-img {
+        position: absolute; top: -5px; right: -5px; background: #ff4d4f; color: white;
+        border: none; width: 18px; height: 18px; border-radius: 50%; font-size: 10px;
+        display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      }
+      
+      .btn-submit { width: 100%; padding: 12px; background: var(--sage-green); color: white; border: none; border-radius: 8px; margin-top: 24px; cursor: pointer; }
+      .btn-delete { width: 100%; padding: 10px; background: transparent; color: var(--clay-orange); border: 1px solid var(--clay-orange); border-radius: 8px; margin-top: 12px; cursor: pointer; }
+    
+        .btn-goto-form {
+        flex: 1;
+        text-align: center;
+        background: #4285f4; 
+        color: white;
+        padding: 12px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 0.95rem;
+        box-shadow: 0 4px 10px rgba(66,133,244,0.2);
+        transition: transform 0.2s, opacity 0.2s;
+      }
+      .btn-goto-form:hover { transform: translateY(-1px); opacity: 0.95; }
+      .btn-copy-form-url {
+        padding: 12px 16px;
+        background: white;
+        color: #4285f4;
+        border: 1px solid #4285f4;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: background 0.2s;
+      }
+      .btn-copy-form-url:hover { background: #f4f8ff; }
+
+</style>
+  </head>
+  
+  <body>
+    <div class="container">
+      <div class="action-bar">
+        <div>
+          <a href="/" class="back-link">← 返回大月曆看板</a>
+          <h1>{date} 活動詳情</h1>
+        </div>
+        <button id="open-add-modal" class="btn-add-trigger">＋ 新增此日活動</button>
+      </div>
+
+      <div class="date-switcher-bar">
+        <button id="btn-prev-day" class="btn-date-nav">← 上一日</button>
+        <button id="btn-next-day" class="btn-date-nav">下一日 →</button>
+      </div>
+
+      <div id="loading" class="loading-status">正在讀取雲端詳細資料...</div>
+      <div id="details-list"></div>
+    </div>
+
+    <div id="form-modal" class="modal-overlay">
+      <div class="modal-box">
+        <button id="close-modal" class="btn-close-modal">&times;</button>
+        <h2 id="form-title">＋ 新增此日活動</h2>
+        <form id="activity-form">
+          <input type="hidden" id="form-id" />
+          
+          <label for="intern-select">負責實習生</label>
+          <select id="intern-select"><option value="new">＋ 新增自訂...</option></select>
+          <div id="new-intern-block" style="margin-top:8px;">
+            <input type="text" id="intern-name-input" placeholder="實習生名字" />
+            <input type="color" id="intern-color-input" value="#6b7a67" style="margin-top:4px; height:40px;"/>
+          </div>
+
+          <label for="activity-name">活動名稱</label>
+          <input type="text" id="activity-name" required />
+
+          <label for="activity-desc">活動介紹描述</label>
+          <textarea id="activity-desc" rows="2"></textarea>
+
+          <label for="time-start">時間</label>
+          <div style="display:flex; gap:10px;">
+            <input type="time" id="time-start" required />
+            <input type="time" id="time-end" required />
+          </div>
+
+          <label for="activity-location">地點</label>
+          <select id="activity-location">
+            <option value="空間客舍">空間客舍</option>
+            <option value="空間客棧">空間客棧</option>
+            <option value="戶外">戶外</option>
+          </select>
+
+          <label for="activity-fee">常規費用 ($)</label>
+          <input type="number" id="activity-fee" value="0" />
+
+          <label for="intern-discount-fee">實習生優惠價 ($)</label>
+          <input type="number" id="intern-discount-fee" value="0" />
+
+          <label for="collab-ig">想 Collab 的 IG 帳號</label>
+          <input type="text" id="collab-ig" placeholder="例如: @my_account" />
+
+          <label for="include-pass">包含每月 Pass</label>
+          <select id="include-pass"><option value="是">是</option><option value="否">否</option></select>
+
+          <label for="ig-images-input">📸 IG Post 多張相片 (自動壓縮)</label>
+          <input type="file" id="ig-images-input" accept="image/*" multiple />
+          <div id="form-preview-gallery" class="form-gallery-preview"></div>
+
+          <label for="ig-caption-input">📝 IG Post 預定內文</label>
+          <textarea id="ig-caption-input" rows="3"></textarea>
+
+          <button type="submit" class="btn-submit">儲存此紀錄至雲端</button>
+          <button type="button" id="btn-delete" class="btn-delete" style="display: none;">永久刪除此紀錄</button>
+        </form>
+      </div>
+    </div>
+
+<script is:inline define:vars={{ targetDate: date }}>
+  const supabaseUrl = 'https://blqlrxqckiuvgevmakbu.supabase.co';
+  const supabaseKey = 'sb_publishable_qFXwpuGChVdRwjc9K7prVQ_PgYmlnpG';
+  const TABLE_NAME = 'activities';
+  const BUCKET_NAME = 'activity-images';
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbzP7Lfd0RHyhjxlS6uRJ5ng-NcM0sybtcblv9126WEFUG-KfbPP7TIPsJsbhGq0J8VXEA/exec";
+  
+  let client = window.supabase.createClient(supabaseUrl, supabaseKey);
+  let dayActivities = [];
+  let globalInternColors = {};
+  let uploadedImageUrls = [];
+
+  const listContainer = document.getElementById('details-list');
+  const loadingText = document.getElementById('loading');
+  const activityForm = document.getElementById('activity-form');
+  const btnDelete = document.getElementById('btn-delete');
+  const formTitle = document.getElementById('form-title');
+  const internSelect = document.getElementById('intern-select');
+  const newInternBlock = document.getElementById('new-intern-block');
+  const internNameInput = document.getElementById('intern-name-input');
+  const internColorInput = document.getElementById('intern-color-input');
+  const formModal = document.getElementById('form-modal');
+  const igImagesInput = document.getElementById('ig-images-input');
+  const formPreviewGallery = document.getElementById('form-preview-gallery');
+  const igCaptionInput = document.getElementById('ig-caption-input');
+
+  function openModal() { formModal.classList.add('is-active'); }
+  function closeModalWindow() { formModal.classList.remove('is-active'); }
+  document.getElementById('open-add-modal').addEventListener('click', () => { resetForm(); openModal(); });
+  document.getElementById('close-modal').addEventListener('click', closeModalWindow);
+
+  // 🎯 修正：真正可實現跨域直接下載圖片的函式
+  async function downloadImage(url, filename) {
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) throw new Error('網絡回應失敗');
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = filename || 'ig-photo.jpg';
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
+    } catch (error) {
+      console.error('直接下載失敗，切換為另開新頁：', error);
+      window.open(url, '_blank');
+    }
+  }
+  window.downloadImage = downloadImage;
+
+  function compressImage(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width; let height = img.height;
+          if (width > 1200) { height = Math.round((height * 1200) / width); width = 1200; }
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => { resolve(new File([blob], file.name, { type: 'image/jpeg' })); }, 'image/jpeg', 0.85);
+        };
+      };
+    });
+  }
+
+  igImagesInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    const loadingIndicator = document.createElement('span');
+    loadingIndicator.innerText = '上載中...';
+    formPreviewGallery.appendChild(loadingIndicator);
+
+    let prefix = internSelect.value === 'new' ? (internNameInput.value || 'temp') : internSelect.value;
+    for (let file of files) {
+      const compressed = await compressImage(file);
+      const fileName = `${prefix}/${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
+      const { data, error } = await client.storage.from(BUCKET_NAME).upload(fileName, compressed);
+      if (!error) {
+        const { data: urlData } = client.storage.from(BUCKET_NAME).getPublicUrl(fileName);
+        uploadedImageUrls.push(urlData.publicUrl);
+      }
+    }
+    renderFormPreviewGallery();
+  });
+
+  function renderFormPreviewGallery() {
+    formPreviewGallery.innerHTML = '';
+    uploadedImageUrls.forEach((url, index) => {
+      const container = document.createElement('div');
+      container.className = 'preview-image-container';
+
+      const img = document.createElement('img'); 
+      img.src = url; 
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn-remove-preview-img';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.title = '刪除此照片';
+      
+      removeBtn.addEventListener('click', () => {
+        uploadedImageUrls.splice(index, 1);
+        renderFormPreviewGallery();
+      });
+
+      container.appendChild(img);
+      container.appendChild(removeBtn);
+      formPreviewGallery.appendChild(container);
+    });
+  }
+
+  async function updateInternDropdown() {
+    const { data } = await client.from(TABLE_NAME).select('intern, color_hex');
+    internSelect.innerHTML = '<option value="new">＋ 新增自訂...</option>';
+    if (data) {
+      globalInternColors = {};
+      data.forEach(r => { if(r.intern) globalInternColors[r.intern.trim()] = r.color_hex || '#6b7a67'; });
+      Object.keys(globalInternColors).forEach(name => {
+        const opt = document.createElement('option'); opt.value = name; opt.innerText = name; internSelect.appendChild(opt);
+      });
+    }
+  }
+  internSelect.addEventListener('change', () => { newInternBlock.style.display = internSelect.value === 'new' ? 'block' : 'none'; });
+
+  async function fetchDayData() {
+    loadingText.style.display = 'block';
+    const { data } = await client.from(TABLE_NAME).select('*').eq('date', targetDate);
+    if (data) { dayActivities = data; loadingText.style.display = 'none'; renderDetails(); }
+  }
+
+  function renderDetails() {
+    listContainer.innerHTML = '';
+    if (dayActivities.length === 0) {
+      listContainer.innerHTML = '<div class="no-data">這天目前沒有任何活動。</div>'; return;
+    }
+    
+    dayActivities.forEach(act => {
+      const card = document.createElement('div');
+      card.className = 'detail-card';
+      let themeColor = act.color_hex || '#6b7a67';
+      card.style.setProperty('--card-border-color', themeColor);
+      card.style.setProperty('--card-bg-color', `${themeColor}12`);
+      card.style.setProperty('--meta-bg-color', `${themeColor}1E`);
+
+      let images = [];
+      if (act.image_urls) images = typeof act.image_urls === 'string' ? JSON.parse(act.image_urls) : act.image_urls;
+
+      const dynamicFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSf_6mvaVGg3yHcFxEZ6PLTQJECFuSk0GwwSrwOdAc6lijiyFw/viewform";
+      const originalActivityName = act.name || '未命名活動';
+      const igCaption = act.ig_caption || '（暫無活動詳情）';
+
+      let helpers = [];
+      if (act.helper_names) {
+        helpers = typeof act.helper_names === 'string' ? JSON.parse(act.helper_names) : act.helper_names;
+      }
+
+      let displayTitle = originalActivityName;
+      if (act.date && typeof act.date === 'string') {
+        const parts = act.date.split(/[-/]/); 
+        if (parts.length >= 3) {
+          const month = parseInt(parts[1], 10);
+          const day = parseInt(parts[2], 10);
+          if (!isNaN(month) && !isNaN(day)) {
+            displayTitle = `${day}/${month} ${originalActivityName}`;
+          }
+        }
+      }
+
+      let cardHtml = '';
+
+      if (act.is_approved) {
+        let signupFormHtml = '';
+        if (helpers.length < 2) {
+          signupFormHtml = `
+            <div class="signup-form-mini" style="display: flex; gap: 8px; margin-top: 10px;">
+              <input type="text" id="signup-name-${act.id}" placeholder="輸入實習生名字報名" style="flex: 1; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.9rem;" />
+              <button type="button" class="btn-signup-submit" data-act-id="${act.id}" style="background: var(--sage-green); color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 0.9rem; cursor: pointer;">我要報名</button>
+            </div>
+          `;
+        } else {
+          signupFormHtml = `<div class="signup-full-msg" style="color: var(--clay-orange); font-size: 0.9rem; font-weight: 500; margin-top: 5px;">⚠️ 報名人數已滿（限額 2 名）</div>`;
+        }
+
+        cardHtml = `
+          <h3>[已准許發佈的活動] ${displayTitle}</h3>
+          <button class="btn-edit-icon-trigger" title="解鎖修改">🔒</button>
+          <div class="meta-grid">
+            <div class="meta-item">👤 負責實習生：<strong>${act.intern || '無'}</strong></div>
+            <div class="meta-item">💰 常規費用：<strong>$${act.fee || 0}</strong></div>
+            <div class="meta-item">💸 實習生優惠價：<strong>$${act.intern_discount_fee || 0}</strong></div>
+            <div class="meta-item">🤝 Collab IG：<strong>${act.collab_ig || '無'}</strong></div>
+
+            <div class="meta-item" style="border-left: 4px solid var(--sage-green); background: rgba(255,255,255,0.4); grid-column: span 2;">
+              📝 實習生報名 (${helpers.length}/2)：
+              <strong>${helpers.length > 0 ? helpers.join('、') : '目前尚無人報名'}</strong>
+              ${signupFormHtml}
+            </div>
+          </div>
+          <div class="ig-section">
+            <div class="ig-title">📸 Instagram 宣傳大圖</div>
+            <div class="ig-gallery">
+              ${images.map((url, idx) => `
+                <div class="ig-item-wrapper">
+                  <img src="${url}" alt="IG Image ${idx+1}" />
+                  <!-- 🎯 點擊直接呼叫 downloadImage 觸發真實下載 -->
+                  <button type="button" onclick="downloadImage('${url}', '${act.date || 'ig'}-photo-${idx+1}.jpg')" class="btn-download-img" style="border:none; cursor:pointer;">📥 下載此圖</button>
+                </div>
+              `).join('')}
+            </div>
+            ${act.ig_caption ? `
+              <div class="caption-container">
+                <button class="btn-copy-caption" onclick="navigator.clipboard.writeText(\`${act.ig_caption.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`); alert('文案已複製到剪貼簿！');">📋 複製內文</button>
+                <div class="ig-caption-box">${act.ig_caption}</div>
+              </div>
+            ` : ''}
+          </div>
+          
+          <div class="form-action-container">
+            <a href="${dynamicFormUrl}" target="_blank" class="btn-goto-form">📝 前往 Google 表單報名</a>
+            <button class="btn-copy-form-url" onclick="navigator.clipboard.writeText('${dynamicFormUrl}'); alert('Google 表單報名網址已複製！可以放上 Linktree 發給客人了！');">🔗 複製報名網址</button>
+          </div>
+
+          <button class="btn-approve-lock is-approved" data-id="${act.id}">✅ 已准許（點擊取消准許）</button>
+        `;
+      } else {
+        cardHtml = `
+          <h3>${displayTitle}</h3>
+          <button class="btn-edit-icon-trigger" title="修改活動">✏️</button>
+          <div class="meta-grid">
+            <div class="meta-item">👤 實習生：<strong>${act.intern || '無'}</strong></div>
+            <div class="meta-item">⏰ 時間：<strong>${act.time_start || ''} ~ ${act.time_end || ''}</strong></div>
+            <div class="meta-item">📍 地點：<strong>${act.location || '未定'}</strong></div>
+            <div class="meta-item">💰 常規費用：<strong>$${act.fee || 0}</strong></div>
+            <div class="meta-item">💸 實習生優惠價：<strong>$${act.intern_discount_fee || 0}</strong></div>
+            <div class="meta-item">🤝 Collab IG：<strong>${act.collab_ig || '無'}</strong></div>
+            <div class="meta-item">🎫 包含每月Pass ：<strong>${act.include_pass || '是'}</strong></div>
+          </div>
+          ${act.description ? `<div class="desc-text">${act.description}</div>` : ''}
+          <div class="ig-section">
+            <div class="ig-title">📸 Instagram 預覽</div>
+            <div class="ig-gallery">
+              ${images.map(url => `
+                <div class="ig-item-wrapper"><img src="${url}" /></div>
+              `).join('')}
+            </div>
+            ${act.ig_caption ? `<div class="ig-caption-box">${act.ig_caption}</div>` : ''}
+          </div>
+
+          <button class="btn-approve-lock" data-id="${act.id}">📌 准許此活動並發佈</button>
+        `;
+      }
+
+      card.innerHTML = cardHtml;
+
+      // 快捷報名事件監聽
+      const signupBtn = card.querySelector('.btn-signup-submit');
+      if (signupBtn) {
+        signupBtn.addEventListener('click', async () => {
+          const actId = signupBtn.getAttribute('data-act-id');
+          const targetAct = dayActivities.find(a => String(a.id) === String(actId));
+          if (!targetAct) return;
+
+          const nameInput = document.getElementById(`signup-name-${actId}`);
+          const helperName = nameInput.value.trim();
+          if (!helperName) { alert('請輸入名字！'); return; }
+
+          let currentHelpers = [];
+          if (targetAct.helper_names) {
+            currentHelpers = typeof targetAct.helper_names === 'string' ? JSON.parse(targetAct.helper_names) : targetAct.helper_names;
+          }
+          if (!Array.isArray(currentHelpers)) currentHelpers = [];
+
+          if (currentHelpers.length >= 2) {
+            alert('名額已滿！');
+            return;
+          }
+
+          currentHelpers.push(helperName);
+
+          const { error } = await client
+            .from(TABLE_NAME)
+            .update({ helper_names: currentHelpers })
+            .eq('id', actId);
+
+          if (!error) {
+            alert('報名成功！');
+            await fetchDayData();
+          } else {
+            alert('報名失敗，請稍後再試！');
+            console.error(error);
+          }
+        });
+      }
+
+      // 編輯點擊事件
+      card.querySelector('.btn-edit-icon-trigger').addEventListener('click', async () => {
+        if (act.is_approved) {
+          const inputPwd = prompt('此活動已准許鎖定，請輸入原設定密碼進行解鎖：');
+          if (inputPwd !== act.approval_password) { alert('密碼錯誤，拒絕存取！'); return; }
+        }
+        fillFormForEdit(act, themeColor, images);
+      });
+
+      // 🎯 准許 / 取消准許邏輯 (連動 GAS 刪除/新增)
+      card.querySelector('.btn-approve-lock').addEventListener('click', async () => {
+        // 🗑️ 情況一：取消准許 ➔ 告知 GAS 刪除活動
+        if (act.is_approved) {
+          const inputPwd = prompt('請輸入密碼以解除准許鎖定：');
+          if (inputPwd === act.approval_password) {
+            try {
+              await fetch(GAS_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  action: 'cancel', 
+                  activityName: originalActivityName,
+                  activityDate: act.date, 
+                  secretKey: "MyPrivateWebsiteSecret123" 
+                })
+              });
+              console.log('已發送「取消發布」請求至 Google 表單');
+            } catch(e) {
+              console.error('同步刪除表單失敗', e);
+            }
+
+            await client.from(TABLE_NAME).update({ is_approved: false, approval_password: '' }).eq('id', act.id);
+            await fetchDayData();
+          } else { alert('密碼錯誤！'); }
+          
+        // ➕ 情況二：准許發佈 ➔ 告知 GAS 新增活動
+        } else {
+          const pwd = prompt('請設定此活動的修改管理密碼（簡單數字即可）：');
+          if (!pwd) { alert('必須設定密碼才能准許！'); return; }
+          
+          try {
+            await fetch(GAS_URL, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                action: 'approve', 
+                activityName: originalActivityName,
+                igCaption: igCaption,
+                activityDate: act.date, 
+                secretKey: "MyPrivateWebsiteSecret123" 
+              })
+            });
+            console.log('已發送「核准發布」請求至 Google 表單');
+          } catch(e) {
+            console.error('同步表單失敗，但仍繼續發布', e);
+          }
+
+          await client.from(TABLE_NAME).update({ is_approved: true, approval_password: pwd }).eq('id', act.id);
+          await fetchDayData();
+        }
+      });
+
+      listContainer.appendChild(card);
+    });
+  }
+
+  function fillFormForEdit(act, themeColor, images) {
+    formTitle.innerText = '✏️ 修改活動紀錄'; btnDelete.style.display = 'block';
+    document.getElementById('form-id').value = act.id;
+    document.getElementById('activity-name').value = act.name || '';
+    document.getElementById('activity-desc').value = act.description || '';
+    document.getElementById('time-start').value = act.time_start || '';
+    document.getElementById('time-end').value = act.time_end || '';
+    document.getElementById('activity-location').value = act.location || '空間客舍';
+    document.getElementById('activity-fee').value = act.fee || 0;
+    document.getElementById('intern-discount-fee').value = act.intern_discount_fee || 0;
+    document.getElementById('collab-ig').value = act.collab_ig || '';
+    document.getElementById('include-pass').value = act.include_pass || '是';
+    igCaptionInput.value = act.ig_caption || '';
+    
+    uploadedImageUrls = images ? [...images] : [];
+    renderFormPreviewGallery();
+
+    if (act.intern && Array.from(internSelect.options).map(o=>o.value).includes(act.intern)) {
+      internSelect.value = act.intern; newInternBlock.style.display = 'none';
+    } else if (act.intern) {
+      internSelect.value = 'new'; newInternBlock.style.display = 'block'; internNameInput.value = act.intern;
+      internColorInput.value = themeColor;
+    }
+    openModal();
+  }
+
+  activityForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('form-id').value;
+    let finalInternName = internSelect.value === 'new' ? internNameInput.value.trim() : internSelect.value;
+    let finalColorHex = internSelect.value === 'new' ? internColorInput.value : (globalInternColors[finalInternName] || '#6b7a67');
+    
+    const payload = {
+      date: targetDate, intern: finalInternName, color_hex: finalColorHex,
+      name: document.getElementById('activity-name').value,
+      description: document.getElementById('activity-desc').value,
+      time_start: document.getElementById('time-start').value,
+      time_end: document.getElementById('time-end').value,
+      location: document.getElementById('activity-location').value,
+      fee: parseInt(document.getElementById('activity-fee').value) || 0,
+      intern_discount_fee: parseInt(document.getElementById('intern-discount-fee').value) || 0,
+      collab_ig: document.getElementById('collab-ig').value.trim(),
+      include_pass: document.getElementById('include-pass').value,
+      image_urls: uploadedImageUrls, ig_caption: igCaptionInput.value
+    };
+
+    if (id) { await client.from(TABLE_NAME).update(payload).eq('id', id); } 
+    else { payload.id = Math.floor(Date.now() / 1000); await client.from(TABLE_NAME).insert(payload); }
+    closeModalWindow(); resetForm(); await updateInternDropdown(); await fetchDayData();
+  });
+
+  btnDelete.addEventListener('click', async () => {
+    const id = document.getElementById('form-id').value;
+    if (id && confirm('確定刪除？')) {
+      await client.from(TABLE_NAME).delete().eq('id', id);
+      closeModalWindow(); resetForm(); await fetchDayData();
+    }
+  });
+
+  function resetForm() {
+    activityForm.reset(); document.getElementById('form-id').value = '';
+    formTitle.innerText = '＋ 新增此日活動'; btnDelete.style.display = 'none';
+    internSelect.value = 'new'; newInternBlock.style.display = 'block';
+    document.getElementById('intern-discount-fee').value = 0;
+    document.getElementById('collab-ig').value = '';
+    uploadedImageUrls = []; formPreviewGallery.innerHTML = '';
+  }
+
+  const currentParts = targetDate.split('-');
+  const currentObj = new Date(parseInt(currentParts[0]), parseInt(currentParts[1]) - 1, parseInt(currentParts[2]));
+  document.getElementById('btn-prev-day').addEventListener('click', () => {
+    currentObj.setDate(currentObj.getDate() - 1); window.location.href = `/day/${currentObj.getFullYear()}-${String(currentObj.getMonth()+1).padStart(2,'0')}-${String(currentObj.getDate()).padStart(2,'0')}`;
+  });
+  document.getElementById('btn-next-day').addEventListener('click', () => {
+    currentObj.setDate(currentObj.getDate() + 1); window.location.href = `/day/${currentObj.getFullYear()}-${String(currentObj.getMonth()+1).padStart(2,'0')}-${String(currentObj.getDate()).padStart(2,'0')}`;
+  });
+
+  (async () => { await updateInternDropdown(); await fetchDayData(); })();
+</script>
+  </body>
+</html>
