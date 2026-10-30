@@ -440,6 +440,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+async function initPage() {
+    // 1. 先抓取列表
+    await fetchTalks();
+
+    // 2. 檢查 Supabase Session
+    const { data: { session }, error } = await client.auth.getSession();
+    console.log("目前 Session 狀態：", session); // 可以按 F12 在主控台看是否有資料
+
+    if (session) {
+        const addBtn = document.getElementById('open-add-modal-btn');
+        if (addBtn) addBtn.style.display = "inline-block";
+        
+        // 如果有登入，強制把所有編輯按鈕叫出來（重新呼叫一次 fetchTalks 渲染）
+        fetchTalks();
+    }
+}
     </script>
 
 <style is:global>
